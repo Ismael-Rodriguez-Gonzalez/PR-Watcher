@@ -1,0 +1,24 @@
+{
+  "repos": [
+    {
+      "url": "https://github.com/masorange/federacionesosp-orangefederationhub-application-typescript",
+      "name": "orangeHub"
+    },
+    {
+      "url": "https://github.com/masorange/federacionesosp-corefederationhub-application-typescript",
+      "name": "core"
+    },
+    {
+      "url": "https://github.com/masorange/federacionesosp-orange12federationhub-application-typescript",
+      "name": "orange12Hub"
+    },
+    {
+      "url": "https://github.com/masorange/fichacliente-fdc-spa-typescript",
+      "name": "Ficha Orange"
+    },
+    {
+      "url": "https://github.com/masorange/pangea-pdv-spa-typescript",
+      "name": "Pangea Orange"
+    }
+  ]
+}
