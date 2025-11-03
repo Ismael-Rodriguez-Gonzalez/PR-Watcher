@@ -112,6 +112,113 @@ class GitHubService {
     return prs;
   }
 
+  // Función específica para cargar PRs para estadísticas (incluye todas las PRs: abiertas, cerradas, mergeadas)
+  async getPullRequestsForStats(repo: Repository): Promise<PullRequest[]> {
+    if (!this.octokit) {
+      throw new Error('GitHub service not initialized. Please configure your token.');
+    }
+
+    // Extraer owner y repo de la URL
+    const urlParts = repo.url.replace('https://github.com/', '').split('/');
+    const owner = urlParts[0];
+    const repoName = urlParts[urlParts.length - 1];
+
+    try {
+      const { data } = await this.octokit.pulls.list({
+        owner,
+        repo: repoName,
+        state: 'all', // Todas las PRs para estadísticas completas
+        per_page: 100,
+        sort: 'updated',
+        direction: 'desc'
+      });
+
+      // Cargar reviews para cada PR (solo para estadísticas)
+      const prsWithReviews = await Promise.all(
+        data.map(async (pr: any) => {
+          let reviews: any[] = [];
+          try {
+            const { data: reviewsData } = await this.octokit!.pulls.listReviews({
+              owner,
+              repo: repoName,
+              pull_number: pr.number
+            });
+            reviews = reviewsData;
+          } catch (error) {
+            console.warn(`Error loading reviews for PR #${pr.number}:`, error);
+            reviews = [];
+          }
+
+          return {
+            id: pr.id,
+            number: pr.number,
+            title: pr.title,
+            body: pr.body || '',
+            state: pr.state,
+            user: pr.user,
+            assignees: pr.assignees || [],
+            created_at: pr.created_at,
+            updated_at: pr.updated_at,
+            closed_at: pr.closed_at,
+            merged_at: pr.merged_at,
+            draft: pr.draft,
+            base: pr.base,
+            head: pr.head,
+            repository: {
+              id: pr.base.repo.id,
+              name: repo.name,
+              full_name: pr.base.repo.full_name,
+              owner: pr.base.repo.owner,
+              url: repo.url,
+              backgroundColor: repo.backgroundColor
+            },
+            html_url: pr.html_url,
+            mergeable: pr.mergeable,
+            mergeable_state: pr.mergeable_state,
+            comments: pr.comments || 0,
+            review_comments: pr.review_comments || 0,
+            reviews: reviews // Reviews reales cargadas desde la API
+          };
+        })
+      );
+
+      return prsWithReviews;
+    } catch (error: any) {
+      console.error(`Error fetching stats PRs for ${repo.name}:`, error);
+      if (error.status === 403 && error.message.includes('SAML')) {
+        throw new Error(`SAML enforcement error for ${repo.name}. Please authenticate via SAML.`);
+      }
+      throw error;
+    }
+  }
+
+  async getAllPullRequestsForStats(repositories: Repository[]): Promise<PullRequest[]> {
+    const promises = repositories.map(repo => this.getPullRequestsForStats(repo));
+    const results = await Promise.allSettled(promises);
+
+    // Filtrar resultados exitosos y mostrar errores
+    const prs: PullRequest[] = [];
+    const errors: string[] = [];
+
+    results.forEach((result, index) => {
+      if (result.status === 'fulfilled') {
+        prs.push(...result.value);
+      } else {
+        const repoName = repositories[index].name;
+        errors.push(`${repoName}: ${result.reason.message}`);
+        console.error(`Failed to load stats PRs for ${repoName}:`, result.reason);
+      }
+    });
+
+    // Si hay errores de SAML, lanzarlos para mostrar al usuario
+    const samlErrors = errors.filter(e => e.includes('SAML'));
+    if (samlErrors.length > 0) {
+      throw new Error(samlErrors[0]);
+    }
+
+    return prs;
+  }
+
   async assignUserToPR(
     owner: string,
     repo: string,

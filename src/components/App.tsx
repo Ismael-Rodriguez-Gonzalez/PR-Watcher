@@ -1,7 +1,9 @@
 import React, { useState, useEffect } from 'react';
 import { PullRequest, Repository, User } from '../types';
 import { githubService, loadConfig, loadRepositories, loadUsers } from '../services/github';
+import { StatsService } from '../services/statsService';
 import { PullRequestList } from './PullRequestList';
+import { StatsModal } from './StatsModal';
 import './App.css';
 
 // Funciones para manejar localStorage de repositorios seleccionados
@@ -31,6 +33,7 @@ const loadSelectedReposFromStorage = (): Set<string> | null => {
 
 export const App: React.FC = () => {
   const [pullRequests, setPullRequests] = useState<PullRequest[]>([]);
+  const [allPullRequestsForStats, setAllPullRequestsForStats] = useState<PullRequest[]>([]);
   const [repositories, setRepositories] = useState<Repository[]>([]);
   const [users, setUsers] = useState<User[]>([]);
   const [loading, setLoading] = useState(true);
@@ -38,6 +41,7 @@ export const App: React.FC = () => {
   const [initialized, setInitialized] = useState(false);
   const [selectedRepos, setSelectedRepos] = useState<Set<string>>(new Set());
   const [showRepoMenu, setShowRepoMenu] = useState(false);
+  const [showStatsModal, setShowStatsModal] = useState(false);
   const repoMenuRef = React.useRef<HTMLDivElement>(null);
 
   useEffect(() => {
@@ -144,15 +148,41 @@ export const App: React.FC = () => {
     try {
       setLoading(true);
       console.log(`Loading PRs from ${repos.length} repositories...`);
-      const prs = await githubService.getAllPullRequests(repos);
-      console.log(`Total PRs loaded: ${prs.length}`, prs);
-      setPullRequests(prs);
+
+      // Cargar PRs abiertas para la vista principal
+      const openPrs = await githubService.getAllPullRequests(repos);
+      console.log(`Open PRs loaded: ${openPrs.length}`);
+      setPullRequests(openPrs);
+
+      // Cargar todas las PRs para estadísticas (en paralelo)
+      const allPrsForStats = await githubService.getAllPullRequestsForStats(repos);
+      console.log(`All PRs for stats loaded: ${allPrsForStats.length}`);
+      setAllPullRequestsForStats(allPrsForStats);
+
       setError(null);
     } catch (err) {
       console.error('Error loading PRs:', err);
       setError(`Error al cargar PRs: ${err}`);
     } finally {
       setLoading(false);
+    }
+  };
+
+  const refreshStatsOnly = async () => {
+    try {
+      console.log('Refreshing statistics data...');
+      
+      // Limpiar cache de métricas para forzar recálculo
+      StatsService.clearCache();
+      
+      // Solo recargar datos para estadísticas (con reviews)
+      const allPrsForStats = await githubService.getAllPullRequestsForStats(repositories);
+      console.log(`Stats refreshed: ${allPrsForStats.length} PRs loaded`);
+      setAllPullRequestsForStats(allPrsForStats);
+      
+    } catch (err) {
+      console.error('Error refreshing stats:', err);
+      throw err; // Re-throw para que el modal pueda manejar el error
     }
   };
 
@@ -259,6 +289,14 @@ export const App: React.FC = () => {
         <div className="stats">
           <span>{pullRequests.length} PRs</span>
 
+          <button
+            className="stats-btn"
+            onClick={() => setShowStatsModal(true)}
+            title="Ver estadísticas del equipo"
+          >
+            📊 Estadísticas
+          </button>
+
           <div className="repo-filter" ref={repoMenuRef}>
             <button
               className="repo-filter-btn"
@@ -316,6 +354,15 @@ export const App: React.FC = () => {
           selectedRepos={selectedRepos}
         />
       )}
+
+      <StatsModal
+        isOpen={showStatsModal}
+        onClose={() => setShowStatsModal(false)}
+        pullRequests={allPullRequestsForStats}
+        users={users}
+        repositories={repositories}
+        onRefreshStats={refreshStatsOnly}
+      />
     </div>
   );
 };
