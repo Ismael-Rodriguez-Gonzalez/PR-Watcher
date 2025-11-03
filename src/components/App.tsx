@@ -165,7 +165,7 @@ export const App: React.FC = () => {
             ? {
                 ...p,
                 assignees: [
-                  ...p.assignees,
+                  ...p.assignees.filter(assignee => assignee.login !== username), // Evitar duplicados
                   {
                     login: username,
                     avatar_url: `https://github.com/${username}.png` // URL por defecto
@@ -182,8 +182,8 @@ export const App: React.FC = () => {
 
       await githubService.assignUserToPR(owner, repo, pr.number, [username]);
 
-      // Recargar PRs para obtener datos actualizados desde el servidor
-      await loadPullRequests(repositories);
+      // No recargar inmediatamente para evitar sobrescribir la actualización optimista
+      // Los datos se sincronizarán en la próxima actualización automática
     } catch (err) {
       // En caso de error, revertir la actualización optimista
       await loadPullRequests(repositories);
@@ -211,8 +211,8 @@ export const App: React.FC = () => {
 
       await githubService.removeAssigneeFromPR(owner, repo, pr.number, [username]);
 
-      // Recargar PRs para obtener datos actualizados desde el servidor
-      await loadPullRequests(repositories);
+      // No recargar inmediatamente para evitar sobrescribir la actualización optimista
+      // Los datos se sincronizarán en la próxima actualización automática
     } catch (err) {
       // En caso de error, revertir la actualización optimista
       await loadPullRequests(repositories);

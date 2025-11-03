@@ -7,6 +7,12 @@
 .filters {
   margin-bottom: 20px;
   display: flex;
+  flex-direction: column;
+  gap: 15px;
+}
+
+.filters-row-1 {
+  display: flex;
   gap: 20px;
   align-items: flex-start;
   flex-wrap: wrap;
@@ -319,6 +325,34 @@
     min-width: auto;
     width: 100%;
   }
+}
+
+/* Filtros adicionales */
+.additional-filters {
+  display: flex;
+  align-items: center;
+  gap: 15px;
+}
+
+.unassigned-filter {
+  display: flex;
+  align-items: center;
+  gap: 6px;
+  cursor: pointer;
+  font-size: 14px;
+  color: #c9d1d9;
+  user-select: none;
+}
+
+.unassigned-filter input[type="checkbox"] {
+  cursor: pointer;
+  width: 16px;
+  height: 16px;
+  accent-color: #1f6feb;
+}
+
+.unassigned-filter:hover {
+  color: #79c0ff;
 }
 
 @media (max-width: 480px) {

@@ -32,18 +32,27 @@ class GitHubService {
 
       console.log(`Found ${data.length} PRs for ${repo.name}`);
 
-      // Obtener detalles completos de cada PR (incluyendo comments y review_comments)
+      // Obtener detalles completos de cada PR (incluyendo comments, review_comments y reviews)
       const detailedPRs = await Promise.all(
         data.map(async (pr: any) => {
           try {
-            const { data: prDetail } = await this.octokit!.pulls.get({
-              owner,
-              repo: repoName,
-              pull_number: pr.number
-            });
+            const [prDetailResponse, reviewsResponse] = await Promise.all([
+              this.octokit!.pulls.get({
+                owner,
+                repo: repoName,
+                pull_number: pr.number
+              }),
+              this.octokit!.pulls.listReviews({
+                owner,
+                repo: repoName,
+                pull_number: pr.number
+              })
+            ]);
+
             return {
-              ...prDetail,
-              repository: repo
+              ...prDetailResponse.data,
+              repository: repo,
+              reviews: reviewsResponse.data
             };
           } catch (error) {
             console.error(`Error fetching details for PR #${pr.number}:`, error);
@@ -52,7 +61,8 @@ class GitHubService {
               ...pr,
               repository: repo,
               comments: 0,
-              review_comments: 0
+              review_comments: 0,
+              reviews: []
             };
           }
         })

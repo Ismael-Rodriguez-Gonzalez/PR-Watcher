@@ -326,3 +326,72 @@
   cursor: default;
   background-color: #21262d;
 }
+
+/* Estilos para Reviews */
+.reviews-section {
+  min-height: auto;
+}
+
+.reviews {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 8px;
+  margin-top: 4px;
+}
+
+.review {
+  display: flex;
+  align-items: center;
+  gap: 6px;
+  padding: 4px 8px;
+  border-radius: 4px;
+  font-size: 13px;
+  border: 1px solid transparent;
+}
+
+.review.approved {
+  background-color: rgba(46, 160, 67, 0.15);
+  border-color: rgba(46, 160, 67, 0.3);
+}
+
+.review.changes_requested {
+  background-color: rgba(248, 81, 73, 0.15);
+  border-color: rgba(248, 81, 73, 0.3);
+}
+
+.review.commented {
+  background-color: rgba(56, 139, 253, 0.15);
+  border-color: rgba(56, 139, 253, 0.3);
+}
+
+.review.dismissed {
+  background-color: rgba(110, 118, 129, 0.15);
+  border-color: rgba(110, 118, 129, 0.3);
+}
+
+.reviewer-name {
+  color: #c9d1d9;
+  font-weight: 500;
+}
+
+.review-status {
+  font-size: 16px;
+  display: flex;
+  align-items: center;
+}
+
+.review-status.approved {
+  color: #2ea043;
+}
+
+.review-status.changes_requested {
+  color: #f85149;
+}
+
+.review-status.commented {
+  color: #388bfd;
+}
+
+.review-status.dismissed {
+  color: #6e7681;
+}

@@ -20,7 +20,8 @@ export const PullRequestList: React.FC<Props> = ({
   loading,
   selectedRepos
 }) => {
-  const [filter, setFilter] = useState<'all' | 'open' | 'draft' | 'unassigned'>('open');
+  const [filter, setFilter] = useState<'all' | 'open' | 'draft'>('open');
+  const [showUnassignedOnly, setShowUnassignedOnly] = useState(false);
   const [searchTerm, setSearchTerm] = useState('');
   const [sortBy, setSortBy] = useState<'date' | 'title' | 'repo'>('date');
   const [sortOrder, setSortOrder] = useState<'asc' | 'desc'>('desc');
@@ -32,7 +33,9 @@ export const PullRequestList: React.FC<Props> = ({
     // Filtro por estado
     if (filter === 'open' && pr.draft) return false;
     if (filter === 'draft' && !pr.draft) return false;
-    if (filter === 'unassigned' && pr.assignees.length > 0) return false;
+
+    // Filtro adicional: solo sin asignar
+    if (showUnassignedOnly && pr.assignees.length > 0) return false;
 
     // Filtro por búsqueda
     if (searchTerm) {
@@ -94,53 +97,60 @@ export const PullRequestList: React.FC<Props> = ({
   return (
     <div className="pr-list-container">
       <div className="filters">
-        <div className="filter-buttons">
-          <button
-            className={filter === 'all' ? 'active' : ''}
-            onClick={() => setFilter('all')}
-          >
-            Todas ({pullRequests.length})
-          </button>
-          <button
-            className={filter === 'open' ? 'active' : ''}
-            onClick={() => setFilter('open')}
-          >
-            Abiertas ({pullRequests.filter(pr => !pr.draft).length})
-          </button>
-          <button
-            className={filter === 'draft' ? 'active' : ''}
-            onClick={() => setFilter('draft')}
-          >
-            Draft ({pullRequests.filter(pr => pr.draft).length})
-          </button>
-          <button
-            className={filter === 'unassigned' ? 'active' : ''}
-            onClick={() => setFilter('unassigned')}
-          >
-            Sin asignar ({pullRequests.filter(pr => pr.assignees.length === 0).length})
-          </button>
+        <div className="filters-row-1">
+          <div className="filter-buttons">
+            <button
+              className={filter === 'all' ? 'active' : ''}
+              onClick={() => setFilter('all')}
+            >
+              Todas ({pullRequests.length})
+            </button>
+            <button
+              className={filter === 'open' ? 'active' : ''}
+              onClick={() => setFilter('open')}
+            >
+              Abiertas ({pullRequests.filter(pr => !pr.draft).length})
+            </button>
+            <button
+              className={filter === 'draft' ? 'active' : ''}
+              onClick={() => setFilter('draft')}
+            >
+              Draft ({pullRequests.filter(pr => pr.draft).length})
+            </button>
+          </div>
+
+          <div className="sort-controls">
+            <label htmlFor="sort-select">Ordenar por:</label>
+            <select
+              id="sort-select"
+              value={sortBy}
+              onChange={(e) => setSortBy(e.target.value as 'date' | 'title' | 'repo')}
+              className="sort-select"
+            >
+              <option value="date">Fecha</option>
+              <option value="title">Título</option>
+              <option value="repo">Repositorio</option>
+            </select>
+
+            <button
+              onClick={() => setSortOrder(sortOrder === 'desc' ? 'asc' : 'desc')}
+              className="sort-order-btn"
+              title={sortOrder === 'desc' ? 'Más reciente primero' : 'Más antiguo primero'}
+            >
+              {sortOrder === 'desc' ? '↓' : '↑'}
+            </button>
+          </div>
         </div>
 
-        <div className="sort-controls">
-          <label htmlFor="sort-select">Ordenar por:</label>
-          <select
-            id="sort-select"
-            value={sortBy}
-            onChange={(e) => setSortBy(e.target.value as 'date' | 'title' | 'repo')}
-            className="sort-select"
-          >
-            <option value="date">Fecha</option>
-            <option value="title">Título</option>
-            <option value="repo">Repositorio</option>
-          </select>
-
-          <button
-            onClick={() => setSortOrder(sortOrder === 'desc' ? 'asc' : 'desc')}
-            className="sort-order-btn"
-            title={sortOrder === 'desc' ? 'Más reciente primero' : 'Más antiguo primero'}
-          >
-            {sortOrder === 'desc' ? '↓' : '↑'}
-          </button>
+        <div className="additional-filters">
+          <label className="unassigned-filter">
+            <input
+              type="checkbox"
+              checked={showUnassignedOnly}
+              onChange={(e) => setShowUnassignedOnly(e.target.checked)}
+            />
+            Solo sin asignar ({pullRequests.filter(pr => pr.assignees.length === 0).length})
+          </label>
         </div>
 
         <input

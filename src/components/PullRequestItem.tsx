@@ -186,6 +186,41 @@ export const PullRequestItem: React.FC<Props> = ({
           </div>
         </div>
 
+        {/* Reviews y Approvals */}
+        {pr.reviews && pr.reviews.length > 0 && (
+          <div className="info-row">
+            <div className="info-item reviews-section">
+              <strong>Reviews:</strong>
+              <div className="reviews">
+                {(() => {
+                  // Filtrar solo los reviews más recientes por usuario
+                  const latestReviews = new Map();
+                  pr.reviews
+                    .sort((a, b) => new Date(b.submitted_at).getTime() - new Date(a.submitted_at).getTime())
+                    .forEach(review => {
+                      if (!latestReviews.has(review.user.login)) {
+                        latestReviews.set(review.user.login, review);
+                      }
+                    });
+
+                  return Array.from(latestReviews.values()).map(review => (
+                    <div key={`${review.user.login}-${review.id}`} className={`review ${review.state.toLowerCase()}`}>
+                      <img src={review.user.avatar_url} alt={review.user.login} className="avatar-small" />
+                      <span className="reviewer-name">{review.user.login}</span>
+                      <span className={`review-status ${review.state.toLowerCase()}`}>
+                        {review.state === 'APPROVED' && '✅'}
+                        {review.state === 'CHANGES_REQUESTED' && '❌'}
+                        {review.state === 'COMMENTED' && '💬'}
+                        {review.state === 'DISMISSED' && '🚫'}
+                      </span>
+                    </div>
+                  ));
+                })()}
+              </div>
+            </div>
+          </div>
+        )}
+
         <div className="info-row">
           <div className="info-item assignees-section">
             <strong>Asignados:</strong>

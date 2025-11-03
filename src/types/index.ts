@@ -18,6 +18,17 @@ export interface User {
   name: string;
 }
 
+// Tipos para Reviews
+export interface Review {
+  id: number;
+  user: {
+    login: string;
+    avatar_url: string;
+  };
+  state: 'APPROVED' | 'CHANGES_REQUESTED' | 'COMMENTED' | 'DISMISSED';
+  submitted_at: string;
+}
+
 // Tipos para Pull Requests
 export interface PullRequest {
   id: number;
@@ -49,6 +60,7 @@ export interface PullRequest {
   review_comments: number;
   html_url: string;
   repository: Repository;
+  reviews?: Review[];
 }
 
 export interface PRListItem extends PullRequest {
