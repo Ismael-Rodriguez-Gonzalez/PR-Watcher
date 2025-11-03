@@ -127,8 +127,8 @@ export const StatsModal: React.FC<StatsModalProps> = ({ isOpen, onClose, pullReq
             <p className="stats-subtitle">Métricas del equipo y análisis de PRs</p>
           </div>
           <div className="stats-modal-actions">
-            <button 
-              className="stats-refresh-btn" 
+            <button
+              className="stats-refresh-btn"
               onClick={handleRefresh}
               disabled={isRefreshing}
               title="Refrescar estadísticas"

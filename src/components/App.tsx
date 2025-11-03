@@ -171,15 +171,15 @@ export const App: React.FC = () => {
   const refreshStatsOnly = async () => {
     try {
       console.log('Refreshing statistics data...');
-      
+
       // Limpiar cache de métricas para forzar recálculo
       StatsService.clearCache();
-      
+
       // Solo recargar datos para estadísticas (con reviews)
       const allPrsForStats = await githubService.getAllPullRequestsForStats(repositories);
       console.log(`Stats refreshed: ${allPrsForStats.length} PRs loaded`);
       setAllPullRequestsForStats(allPrsForStats);
-      
+
     } catch (err) {
       console.error('Error refreshing stats:', err);
       throw err; // Re-throw para que el modal pueda manejar el error
