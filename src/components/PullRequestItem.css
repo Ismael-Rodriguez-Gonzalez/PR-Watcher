@@ -51,10 +51,13 @@
 .pr-repo {
   color: #ffffff;
   font-size: 14px;
-  background-color: #1f6feb;
-  padding: 4px 10px;
+  background-color: #1f6feb; /* Color por defecto, será sobrescrito por styles inline */
+  padding: 4px 12px;
   border-radius: 6px;
   font-weight: 600;
+  text-shadow: 0 1px 2px rgba(0, 0, 0, 0.3);
+  box-shadow: 0 1px 3px rgba(0, 0, 0, 0.2);
+  border: 1px solid rgba(255, 255, 255, 0.1);
 }
 
 .draft-badge {
@@ -195,15 +198,110 @@
 .assign-menu {
   position: absolute;
   top: 100%;
-  right: 0;
+  left: 0;
   margin-top: 4px;
   background-color: #161b22;
   border: 1px solid #30363d;
   border-radius: 6px;
-  padding: 8px;
-  min-width: 200px;
+  padding: 0;
+  min-width: 280px;
+  max-width: 350px;
+  width: max-content;
   z-index: 1000;
   box-shadow: 0 8px 24px rgba(1, 4, 9, 0.5);
+  overflow: hidden;
+
+  /* Asegurar que no se salga del viewport */
+  transform: translateX(0);
+}
+
+/* Variante para cuando el menú debe abrirse hacia la derecha */
+.assign-menu.align-right {
+  left: auto;
+  right: 0;
+}
+
+/* Ajustes para pantallas pequeñas */
+@media (max-width: 600px) {
+  .assign-menu {
+    left: 50%;
+    right: auto;
+    transform: translateX(-50%);
+    max-width: 90vw;
+    min-width: 260px;
+  }
+
+  .assign-menu.align-right {
+    left: 50%;
+    right: auto;
+    transform: translateX(-50%);
+  }
+}
+
+.assign-menu-header {
+  padding: 12px;
+  border-bottom: 1px solid #30363d;
+  background-color: #161b22;
+}
+
+.user-filter-input {
+  width: 100%;
+  padding: 8px 12px;
+  background-color: #0d1117;
+  border: 1px solid #30363d;
+  border-radius: 6px;
+  color: #c9d1d9;
+  font-size: 14px;
+  outline: none;
+}
+
+.user-filter-input:focus {
+  border-color: #58a6ff;
+  box-shadow: 0 0 0 2px rgba(88, 166, 255, 0.1);
+}
+
+.user-filter-input::placeholder {
+  color: #8b949e;
+}
+
+.filter-results {
+  margin-top: 8px;
+  font-size: 12px;
+  color: #8b949e;
+  text-align: center;
+}
+
+.assign-menu-users {
+  max-height: 300px;
+  overflow-y: auto;
+  padding: 8px;
+}
+
+/* Personalizar scrollbar para el menú de usuarios */
+.assign-menu-users::-webkit-scrollbar {
+  width: 6px;
+}
+
+.assign-menu-users::-webkit-scrollbar-track {
+  background: #21262d;
+  border-radius: 3px;
+}
+
+.assign-menu-users::-webkit-scrollbar-thumb {
+  background: #30363d;
+  border-radius: 3px;
+}
+
+.assign-menu-users::-webkit-scrollbar-thumb:hover {
+  background: #484f58;
+}
+
+.no-users-found {
+  padding: 16px 12px;
+  text-align: center;
+  color: #8b949e;
+  font-size: 14px;
+  font-style: italic;
 }
 
 .user-option {

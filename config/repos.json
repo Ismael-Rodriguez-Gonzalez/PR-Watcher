@@ -1,0 +1,49 @@
+{
+  "repos": [
+    {
+      "name": "Orange Hub",
+      "url": "https://github.com/masorange/federacionesosp-orangefederationhub-application-typescript",
+      "backgroundColor": "#cf7807"
+    },
+    {
+      "name": "Core",
+      "url": "https://github.com/masorange/federacionesosp-corefederationhub-application-typescript",
+      "backgroundColor": "#0969da"
+    },
+    {
+      "name": "Orange 12 Hub",
+      "url": "https://github.com/masorange/federacionesosp-orange12federationhub-application-typescript",
+      "backgroundColor": "#8250df"
+    },
+    {
+      "name": "Ficha Orange",
+      "url": "https://github.com/masorange/fichacliente-fdc-spa-typescript",
+      "backgroundColor": "#d1242f"
+    },
+    {
+      "name": "Pangea Orange",
+      "url": "https://github.com/masorange/pangea-pdv-spa-typescript",
+      "backgroundColor": "#1f883d"
+    },
+    {
+      "name": "Shellstore Library",
+      "url": "https://github.com/masorange/federacionesosp-shellstore-library-typescript",
+      "backgroundColor": "#6f42c1"
+    },
+    {
+      "name": "Jazztel Hub",
+      "url": "https://github.com/masorange/federacionesosp-jzzmcfederationhub-application-typescript",
+      "backgroundColor": "#d73a49"
+    },
+    {
+      "name": "Ficha multi marca",
+      "url": "https://github.com/masorange/fichaclientemmosp-fichaclientemm-spa-typescript",
+      "backgroundColor": "#0550ae"
+    },
+    {
+      "name": "Pangea Jzz",
+      "url": "https://github.com/masorange/pangea-pdvjzz-spa-typescript",
+      "backgroundColor": "#28a745"
+    }
+  ]
+}

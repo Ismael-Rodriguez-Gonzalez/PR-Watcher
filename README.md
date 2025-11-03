@@ -36,7 +36,22 @@ Aplicación de escritorio Electron para visualizar y gestionar Pull Requests de 
 
 3. **Configurar GitHub Token**
 
-   Edita el archivo `config.json` y añade tu token de GitHub:
+   **Opción A: Variables de Entorno (Recomendada)**
+   ```bash
+   # Copia el archivo de ejemplo
+   cp .env.example .env
+
+   # Edita .env y añade tu token
+   GITHUB_TOKEN=tu_token_aqui
+   REFRESH_INTERVAL=60
+   ```
+
+   **Opción B: Archivo de Configuración**
+   ```bash
+   cp config/config.example.json config/config.json
+   ```
+
+   Luego edita `config/config.json`:
    ```json
    {
      "githubToken": "tu_token_aqui",
@@ -44,7 +59,7 @@ Aplicación de escritorio Electron para visualizar y gestionar Pull Requests de 
    }
    ```
 
-   Para generar un token:
+   **Generar Token GitHub:**
    - Ve a GitHub → Settings → Developer settings → Personal access tokens → Tokens (classic)
    - Genera un nuevo token con permisos: `repo` (todos los sub-permisos)
 
@@ -56,7 +71,7 @@ Aplicación de escritorio Electron para visualizar y gestionar Pull Requests de 
 
 4. **Configurar Repositorios**
 
-   El archivo `repos.json` ya contiene tus repositorios. Puedes añadir más:
+   El archivo `config/repos.json` ya contiene tus repositorios. Puedes añadir más:
    ```json
    {
      "repos": [
@@ -70,7 +85,7 @@ Aplicación de escritorio Electron para visualizar y gestionar Pull Requests de 
 
 5. **Configurar Usuarios para Asignar**
 
-   Edita `users.json` con los usuarios de tu equipo:
+   Edita `config/users.json` con los usuarios de tu equipo:
    ```json
    {
      "users": [
@@ -126,9 +141,11 @@ github-pr-watcher/
 │   ├── types/            # Definiciones TypeScript
 │   │   └── index.ts
 │   └── main.tsx          # Punto de entrada
-├── config.json           # Configuración (token, intervalo)
-├── repos.json            # Repositorios a monitorear
-├── users.json            # Usuarios del equipo
+├── config/               # Archivos de configuración
+│   ├── config.json       # Configuración (token, intervalo) - No versionado
+│   ├── config.example.json  # Ejemplo de configuración
+│   ├── repos.json        # Repositorios a monitorear
+│   └── users.json        # Usuarios del equipo
 └── package.json
 ```
 
@@ -192,6 +209,47 @@ Escribe en el campo de búsqueda para filtrar por:
 - **Octokit**: Cliente oficial de GitHub API
 - **date-fns**: Formateo de fechas
 
+## Gestión de Configuración
+
+### Variables de Entorno (Recomendado)
+
+La aplicación soporta configuración via variables de entorno:
+
+```bash
+# Desarrollo local
+GITHUB_TOKEN=tu_token_aqui npm run dev
+
+# O usando archivo .env
+echo "GITHUB_TOKEN=tu_token_aqui" > .env
+npm run dev
+```
+
+### Compatibilidad con GitHub CLI
+
+Si tienes GitHub CLI instalado, la aplicación automáticamente detectará el token:
+
+```bash
+# Si ya tienes gh configurado
+gh auth login
+npm run dev  # Usará automáticamente GH_TOKEN
+```
+
+### Despliegue en Diferentes Entornos
+
+**Docker:**
+```dockerfile
+ENV GITHUB_TOKEN=tu_token_aqui
+ENV REFRESH_INTERVAL=60
+```
+
+**Sistemas CI/CD:**
+- Usar secrets del sistema (GitHub Actions, GitLab CI, etc.)
+- No commitear tokens en el código
+
+**Distribución de la App:**
+- Variables de entorno del sistema
+- Configuración via interfaz gráfica (futuro)
+
 ## Próximas Mejoras
 
 - [ ] Ver detalles y diff del código de cada PR
@@ -200,6 +258,7 @@ Escribe en el campo de búsqueda para filtrar por:
 - [ ] Notificaciones de escritorio
 - [ ] Dashboard con métricas
 - [ ] Modo offline con cache
+- [ ] Configuración via interfaz gráfica
 
 ## Licencia
 

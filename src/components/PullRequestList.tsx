@@ -1,11 +1,10 @@
 import React, { useState } from 'react';
-import { PullRequest, User, Repository } from '../types';
+import { PullRequest, User } from '../types';
 import { PullRequestItem } from './PullRequestItem';
 import './PullRequestList.css';
 
 interface Props {
   pullRequests: PullRequest[];
-  repositories: Repository[];
   users: User[];
   onAssignUser: (pr: PullRequest, username: string) => Promise<void>;
   onRemoveAssignee: (pr: PullRequest, username: string) => Promise<void>;
@@ -15,14 +14,13 @@ interface Props {
 
 export const PullRequestList: React.FC<Props> = ({
   pullRequests,
-  repositories,
   users,
   onAssignUser,
   onRemoveAssignee,
   loading,
   selectedRepos
 }) => {
-  const [filter, setFilter] = useState<'all' | 'open' | 'draft' | 'unassigned'>('all');
+  const [filter, setFilter] = useState<'all' | 'open' | 'draft' | 'unassigned'>('open');
   const [searchTerm, setSearchTerm] = useState('');
   const [sortBy, setSortBy] = useState<'date' | 'title' | 'repo'>('date');
   const [sortOrder, setSortOrder] = useState<'asc' | 'desc'>('desc');

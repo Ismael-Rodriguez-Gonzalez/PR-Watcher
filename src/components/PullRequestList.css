@@ -37,24 +37,33 @@
 .repo-menu {
   position: absolute;
   top: calc(100% + 8px);
-  left: 0;
+  right: 0;
   background-color: #161b22;
   border: 1px solid #30363d;
   border-radius: 6px;
-  padding: 12px;
+  padding: 0;
   min-width: 280px;
-  max-width: 400px;
+  max-width: 320px;
+  width: max-content;
   z-index: 1000;
   box-shadow: 0 8px 24px rgba(1, 4, 9, 0.5);
+  max-height: 500px;
+  overflow: hidden;
+  display: flex;
+  flex-direction: column;
+
+  /* Asegurar que no se salga del viewport */
+  margin-right: 8px;
 }
 
 .repo-menu-header {
   display: flex;
   justify-content: space-between;
   align-items: center;
-  margin-bottom: 12px;
-  padding-bottom: 8px;
+  padding: 12px;
   border-bottom: 1px solid #30363d;
+  background-color: #161b22;
+  flex-shrink: 0;
 }
 
 .repo-menu-header strong {
@@ -80,16 +89,49 @@
   display: flex;
   flex-direction: column;
   gap: 8px;
-  max-height: 400px;
+  padding: 12px;
   overflow-y: auto;
+  flex: 1;
+}
+
+/* Personalizar scrollbar para la lista de repositorios */
+.repo-list::-webkit-scrollbar {
+  width: 6px;
+}
+
+.repo-list::-webkit-scrollbar-track {
+  background: #21262d;
+  border-radius: 3px;
+}
+
+.repo-list::-webkit-scrollbar-thumb {
+  background: #30363d;
+  border-radius: 3px;
+}
+
+.repo-list::-webkit-scrollbar-thumb:hover {
+  background: #484f58;
+}
+
+/* Indicador visual de que hay más contenido */
+.repo-menu::after {
+  content: '';
+  position: absolute;
+  bottom: 0;
+  left: 0;
+  right: 0;
+  height: 20px;
+  background: linear-gradient(transparent, #161b22);
+  pointer-events: none;
+  border-radius: 0 0 6px 6px;
 }
 
 .repo-item {
   display: flex;
   align-items: center;
-  gap: 8px;
-  padding: 6px 8px;
-  border-radius: 4px;
+  gap: 6px;
+  padding: 8px 6px;
+  border-radius: 6px;
   cursor: pointer;
   transition: background-color 0.2s;
 }
@@ -106,8 +148,15 @@
 
 .repo-name {
   flex: 1;
-  color: #c9d1d9;
+  color: #ffffff; /* Será sobrescrito por styles inline */
   font-size: 14px;
+  padding: 4px 10px;
+  border-radius: 4px;
+  font-weight: 500;
+  text-shadow: 0 1px 2px rgba(0, 0, 0, 0.3);
+  margin: 0 8px;
+  box-shadow: 0 1px 2px rgba(0, 0, 0, 0.1);
+  border: 1px solid rgba(255, 255, 255, 0.1);
 }
 
 .repo-count {
@@ -232,4 +281,50 @@
   padding: 60px 20px;
   color: #8b949e;
   font-size: 16px;
+}
+
+/* Media queries para responsive design */
+@media (max-width: 1200px) {
+  .repo-menu {
+    right: 0;
+    left: auto;
+    transform: none;
+    max-width: 300px;
+    margin-right: 0;
+    max-height: 400px;
+  }
+}
+
+@media (max-width: 768px) {
+  .repo-menu {
+    right: -20px;
+    left: auto;
+    transform: none;
+    max-width: 280px;
+    min-width: 260px;
+    margin-right: 0;
+    max-height: 350px;
+  }
+
+  .filters {
+    flex-direction: column;
+    gap: 15px;
+  }
+
+  .filter-buttons {
+    flex-wrap: wrap;
+  }
+
+  .search-input {
+    min-width: auto;
+    width: 100%;
+  }
+}
+
+@media (max-width: 480px) {
+  .repo-menu {
+    right: -10px;
+    max-width: 250px;
+    min-width: 240px;
+  }
 }

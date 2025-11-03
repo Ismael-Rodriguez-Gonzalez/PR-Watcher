@@ -1,0 +1,4 @@
+{
+  "refreshInterval": 60,
+  "_comment": "El token de GitHub se puede configurar via variable de entorno GITHUB_TOKEN"
+}

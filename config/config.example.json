@@ -1,0 +1,5 @@
+{
+  "githubToken": "",
+  "refreshInterval": 60,
+  "_comment": "Este archivo es opcional. Puedes usar variables de entorno GITHUB_TOKEN y REFRESH_INTERVAL en su lugar."
+}

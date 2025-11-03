@@ -207,7 +207,15 @@ export const App: React.FC = () => {
                           checked={selectedRepos.has(repo.name)}
                           onChange={() => toggleRepo(repo.name)}
                         />
-                        <span className="repo-name">{repo.name}</span>
+                        <span
+                          className="repo-name"
+                          style={{
+                            backgroundColor: repo.backgroundColor || '#30363d',
+                            color: '#ffffff'
+                          }}
+                        >
+                          {repo.name}
+                        </span>
                         <span className="repo-count">({repoCount})</span>
                       </label>
                     );
@@ -224,7 +232,6 @@ export const App: React.FC = () => {
       ) : (
         <PullRequestList
           pullRequests={pullRequests}
-          repositories={repositories}
           users={users}
           onAssignUser={handleAssignUser}
           onRemoveAssignee={handleRemoveAssignee}

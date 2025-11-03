@@ -39,7 +39,9 @@ github-pr-watcher/
 
 ### Archivos de Configuración
 
-#### config.json
+Todos los archivos de configuración están organizados en la carpeta `/config/`:
+
+#### config/config.json
 ```json
 {
   "githubToken": "",
@@ -48,7 +50,7 @@ github-pr-watcher/
 ```
 **Nota**: Token con autorización SAML para organización `masorange`
 
-#### repos.json
+#### config/repos.json
 ```json
 [
   {
@@ -79,7 +81,7 @@ github-pr-watcher/
 ]
 ```
 
-#### users.json
+#### config/users.json
 ```json
 [
   {
@@ -229,12 +231,19 @@ rm -rf dist && npx tsc --project tsconfig.node.json && npm run dev
 }
 ```
 
+### 6. Error "Por favor, configura tu token de GitHub"
+- **Problema**: Archivos TypeScript de Electron no compilados
+- **Causa**: `electron/main.ts` y `electron/preload.ts` no se compilaron a JavaScript
+- **Solución**: Ejecutar `npx tsc --project tsconfig.node.json` antes de `npm run dev`
+- **Prevención**: Modificado script `dev` para compilar automáticamente Electron
+
 ## Estado Actual
 - ✅ Aplicación completamente funcional
 - ✅ 15 PRs cargándose correctamente de 5 repositorios
 - ✅ Comentarios mostrando formato: "💬 8 (3 en código)"
 - ✅ Todos los enlaces abren en navegador predeterminado
 - ✅ DevTools no se abre automáticamente
+- ✅ Compilación automática de Electron en `npm run dev`
 
 ## Consideraciones de Rendimiento
 - Actualmente se hacen N+1 llamadas a la API por refresh (1 para lista + N para detalles de cada PR)

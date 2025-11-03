@@ -24,5 +24,10 @@ release
 *.sln
 *.sw?
 
-# Config files with sensitive data
-config.json
+# Environment files with sensitive data
+.env
+.env.local
+.env.production
+
+# Optional: Keep config.json in gitignore if users prefer file-based config
+# config/config.json

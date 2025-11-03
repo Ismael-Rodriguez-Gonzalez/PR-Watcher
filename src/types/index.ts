@@ -10,6 +10,7 @@ export interface Repository {
   owner?: string;
   repo?: string;
   enabled?: boolean;
+  backgroundColor?: string;
 }
 
 export interface User {

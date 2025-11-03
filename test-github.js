@@ -2,8 +2,8 @@ const { Octokit } = require('@octokit/rest');
 const fs = require('fs');
 
 // Leer configuración
-const config = JSON.parse(fs.readFileSync('./config.json', 'utf-8'));
-const repos = JSON.parse(fs.readFileSync('./repos.json', 'utf-8'));
+const config = JSON.parse(fs.readFileSync('./config/config.json', 'utf-8'));
+const repos = JSON.parse(fs.readFileSync('./config/repos.json', 'utf-8'));
 
 console.log('Token:', config.githubToken ? '✅ Configurado' : '❌ Falta');
 console.log('Repositorios:', repos.repos.length);
