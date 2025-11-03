@@ -4,6 +4,31 @@ import { githubService, loadConfig, loadRepositories, loadUsers } from '../servi
 import { PullRequestList } from './PullRequestList';
 import './App.css';
 
+// Funciones para manejar localStorage de repositorios seleccionados
+const SELECTED_REPOS_KEY = 'pr-watcher-selected-repos';
+
+const saveSelectedReposToStorage = (selectedRepos: Set<string>) => {
+  try {
+    const reposArray = Array.from(selectedRepos);
+    localStorage.setItem(SELECTED_REPOS_KEY, JSON.stringify(reposArray));
+  } catch (error) {
+    console.warn('Error saving selected repos to localStorage:', error);
+  }
+};
+
+const loadSelectedReposFromStorage = (): Set<string> | null => {
+  try {
+    const saved = localStorage.getItem(SELECTED_REPOS_KEY);
+    if (saved) {
+      const reposArray = JSON.parse(saved);
+      return new Set(reposArray);
+    }
+  } catch (error) {
+    console.warn('Error loading selected repos from localStorage:', error);
+  }
+  return null;
+};
+
 export const App: React.FC = () => {
   const [pullRequests, setPullRequests] = useState<PullRequest[]>([]);
   const [repositories, setRepositories] = useState<Repository[]>([]);
@@ -41,16 +66,22 @@ export const App: React.FC = () => {
       } else {
         newSet.add(repoName);
       }
+      // Guardar configuración en localStorage
+      saveSelectedReposToStorage(newSet);
       return newSet;
     });
   };
 
   const toggleAllRepos = () => {
+    let newSelectedRepos: Set<string>;
     if (selectedRepos.size === repositories.length) {
-      setSelectedRepos(new Set());
+      newSelectedRepos = new Set();
     } else {
-      setSelectedRepos(new Set(repositories.map(repo => repo.name)));
+      newSelectedRepos = new Set(repositories.map(repo => repo.name));
     }
+    setSelectedRepos(newSelectedRepos);
+    // Guardar configuración en localStorage
+    saveSelectedReposToStorage(newSelectedRepos);
   };
 
   const initializeApp = async () => {
@@ -67,8 +98,20 @@ export const App: React.FC = () => {
       setRepositories(repos);
       setUsers(availableUsers);
 
-      // Inicializar repos seleccionados con todos
-      setSelectedRepos(new Set(repos.map(r => r.name)));
+      // Cargar configuración guardada de repositorios seleccionados
+      const savedSelectedRepos = loadSelectedReposFromStorage();
+      if (savedSelectedRepos && savedSelectedRepos.size > 0) {
+        // Filtrar solo los repositorios que aún existen
+        const validSavedRepos = new Set(
+          Array.from(savedSelectedRepos).filter(repoName =>
+            repos.some(r => r.name === repoName)
+          )
+        );
+        setSelectedRepos(validSavedRepos.size > 0 ? validSavedRepos : new Set(repos.map(r => r.name)));
+      } else {
+        // Si no hay configuración guardada, seleccionar todos por defecto
+        setSelectedRepos(new Set(repos.map(r => r.name)));
+      }
 
       if (!config.githubToken) {
         setError('Por favor, configura tu token de GitHub en config.json');
@@ -115,30 +158,64 @@ export const App: React.FC = () => {
 
   const handleAssignUser = async (pr: PullRequest, username: string) => {
     try {
+      // Actualización optimista: actualizar el estado local inmediatamente
+      setPullRequests(prevPRs =>
+        prevPRs.map(p =>
+          p.repository.name === pr.repository.name && p.number === pr.number
+            ? {
+                ...p,
+                assignees: [
+                  ...p.assignees,
+                  {
+                    login: username,
+                    avatar_url: `https://github.com/${username}.png` // URL por defecto
+                  }
+                ]
+              }
+            : p
+        )
+      );
+
       const urlParts = pr.repository.url.replace('https://github.com/', '').split('/');
       const owner = urlParts[0];
       const repo = urlParts[1];
 
       await githubService.assignUserToPR(owner, repo, pr.number, [username]);
 
-      // Recargar PRs
+      // Recargar PRs para obtener datos actualizados desde el servidor
       await loadPullRequests(repositories);
     } catch (err) {
+      // En caso de error, revertir la actualización optimista
+      await loadPullRequests(repositories);
       alert(`Error al asignar usuario: ${err}`);
     }
   };
 
   const handleRemoveAssignee = async (pr: PullRequest, username: string) => {
     try {
+      // Actualización optimista: actualizar el estado local inmediatamente
+      setPullRequests(prevPRs =>
+        prevPRs.map(p =>
+          p.repository.name === pr.repository.name && p.number === pr.number
+            ? {
+                ...p,
+                assignees: p.assignees.filter(assignee => assignee.login !== username)
+              }
+            : p
+        )
+      );
+
       const urlParts = pr.repository.url.replace('https://github.com/', '').split('/');
       const owner = urlParts[0];
       const repo = urlParts[1];
 
       await githubService.removeAssigneeFromPR(owner, repo, pr.number, [username]);
 
-      // Recargar PRs
+      // Recargar PRs para obtener datos actualizados desde el servidor
       await loadPullRequests(repositories);
     } catch (err) {
+      // En caso de error, revertir la actualización optimista
+      await loadPullRequests(repositories);
       alert(`Error al eliminar asignación: ${err}`);
     }
   };

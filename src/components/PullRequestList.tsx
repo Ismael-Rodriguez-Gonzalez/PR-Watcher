@@ -36,7 +36,27 @@ export const PullRequestList: React.FC<Props> = ({
 
     // Filtro por búsqueda
     if (searchTerm) {
-      const search = searchTerm.toLowerCase();
+      const search = searchTerm.toLowerCase().trim();
+
+      // Extraer números del término de búsqueda (para "#424", "PR424", "424", etc.)
+      const numberMatch = search.match(/\d+/);
+      const hasNumbers = numberMatch !== null;
+
+      // Si el término contiene números, buscar también por número de PR
+      if (hasNumbers) {
+        const numberPart = numberMatch[0];
+        if (pr.number.toString().includes(numberPart)) {
+          return true;
+        }
+      }
+
+      // Si es solo números, priorizar búsqueda por número
+      const isOnlyNumbers = /^\d+$/.test(search);
+      if (isOnlyNumbers) {
+        return pr.number.toString().includes(search);
+      }
+
+      // Búsqueda general en todos los campos
       return (
         pr.title.toLowerCase().includes(search) ||
         pr.user.login.toLowerCase().includes(search) ||
@@ -125,7 +145,7 @@ export const PullRequestList: React.FC<Props> = ({
 
         <input
           type="text"
-          placeholder="Buscar por título, autor, repositorio o rama..."
+          placeholder="Buscar por título, autor, repositorio, rama o #número (ej: 424, #424, PR424)..."
           value={searchTerm}
           onChange={(e) => setSearchTerm(e.target.value)}
           className="search-input"
