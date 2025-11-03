@@ -395,3 +395,61 @@
 .review-status.dismissed {
   color: #6e7681;
 }
+
+/* Título con icono inline */
+.pr-title {
+  margin: 0;
+  display: inline;
+}
+
+/* Icono de copiar URL junto al título */
+.copy-url-icon {
+  background: none;
+  border: none;
+  color: #7d8590;
+  cursor: pointer;
+  font-size: 14px;
+  padding: 2px 4px;
+  border-radius: 3px;
+  transition: all 0.2s;
+  opacity: 0.7;
+  margin-left: 8px;
+  vertical-align: middle;
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  min-width: 18px;
+  height: 18px;
+}
+
+.copy-url-icon:hover {
+  color: #58a6ff;
+  background-color: rgba(88, 166, 255, 0.1);
+  opacity: 1;
+}
+
+.copy-url-icon:active {
+  transform: scale(0.95);
+}
+
+.copy-url-icon.copied {
+  color: #2ea043;
+  background-color: rgba(46, 160, 67, 0.1);
+}
+
+/* Mostrar icono solo al hacer hover en la PR */
+.pr-item .copy-url-icon {
+  opacity: 0;
+  visibility: hidden;
+}
+
+.pr-item:hover .copy-url-icon,
+.copy-url-icon.copied {
+  opacity: 0.7;
+  visibility: visible;
+}
+
+.pr-item:hover .copy-url-icon:hover,
+.copy-url-icon.copied {
+  opacity: 1;
+}

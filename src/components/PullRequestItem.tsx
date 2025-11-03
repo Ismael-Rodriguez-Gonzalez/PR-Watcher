@@ -21,6 +21,7 @@ export const PullRequestItem: React.FC<Props> = ({
   const [assigning, setAssigning] = useState(false);
   const [userFilter, setUserFilter] = useState('');
   const [menuAlignment, setMenuAlignment] = useState<'left' | 'right'>('left');
+  const [copyFeedback, setCopyFeedback] = useState(false);
   const assignContainerRef = useRef<HTMLDivElement>(null);
 
   // Calcular posición del menú para evitar que se salga de la pantalla
@@ -94,6 +95,29 @@ export const PullRequestItem: React.FC<Props> = ({
     }
   };
 
+  const handleCopyURL = async () => {
+    try {
+      await navigator.clipboard.writeText(pr.html_url);
+      setCopyFeedback(true);
+      setTimeout(() => setCopyFeedback(false), 2000); // Ocultar feedback después de 2 segundos
+    } catch (error) {
+      console.error('Error copying URL:', error);
+      // Fallback para navegadores que no soportan clipboard API
+      const textArea = document.createElement('textarea');
+      textArea.value = pr.html_url;
+      document.body.appendChild(textArea);
+      textArea.select();
+      try {
+        document.execCommand('copy');
+        setCopyFeedback(true);
+        setTimeout(() => setCopyFeedback(false), 2000);
+      } catch (fallbackError) {
+        console.error('Fallback copy failed:', fallbackError);
+      }
+      document.body.removeChild(textArea);
+    }
+  };
+
   const openInGitHub = () => {
     window.electronAPI.openExternal(pr.html_url);
   };
@@ -132,6 +156,16 @@ export const PullRequestItem: React.FC<Props> = ({
         <div className="pr-title-section">
           <h3 className="pr-title" onClick={openInGitHub}>
             {pr.title}
+            <button
+              className={`copy-url-icon ${copyFeedback ? 'copied' : ''}`}
+              onClick={(e) => {
+                e.stopPropagation();
+                handleCopyURL();
+              }}
+              title="Copiar URL de la PR"
+            >
+              {copyFeedback ? '✓' : '📋'}
+            </button>
           </h3>
           <div className="pr-meta">
             <span className="pr-number">#{pr.number}</span>
