@@ -25,8 +25,8 @@ function createWindow() {
     mainWindow.loadURL('http://localhost:5173');
     // mainWindow.webContents.openDevTools(); // Descomentala si necesitas la consola
   } else {
-    // En producción, carga el archivo HTML generado
-    mainWindow.loadFile(path.join(__dirname, '../index.html'));
+    // En producción, carga el archivo HTML compilado
+    mainWindow.loadFile(path.join(__dirname, '../build/index.html'));
   }
 
   mainWindow.on('closed', () => {

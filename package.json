@@ -8,12 +8,12 @@
     "dev:vite": "vite",
     "dev:electron": "wait-on http://localhost:5173 && cross-env NODE_ENV=development electron .",
     "build:electron": "tsc --project tsconfig.node.json",
-    "build": "npm run build:electron && vite build && electron-builder",
+    "build": "npm run build:electron && npx vite build --outDir build && electron-builder",
     "build:win": "npm run build -- --win",
     "build:mac": "npm run build -- --mac",
     "build:linux": "npm run build -- --linux",
     "preview": "vite preview",
-    "clean": "rm -rf dist"
+    "clean": "rm -rf dist build release"
   },
   "keywords": [
     "electron",
@@ -52,7 +52,10 @@
       "output": "release"
     },
     "files": [
-      "dist/**/*"
+      "dist/**/*",
+      "build/**/*",
+      "config/**/*",
+      "!config/config.json"
     ],
     "win": {
       "target": [

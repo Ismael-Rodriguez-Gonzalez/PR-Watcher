@@ -8,8 +8,8 @@
     "allowSyntheticDefaultImports": true,
     "esModuleInterop": true,
     "resolveJsonModule": true,
-    "outDir": "dist",
-    "rootDir": "."
+    "outDir": "dist/electron",
+    "rootDir": "electron"
   },
   "include": ["electron/**/*.ts"]
 }
