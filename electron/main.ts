@@ -115,5 +115,12 @@ ipcMain.handle('load-users', () => {
 });
 
 ipcMain.handle('open-external', async (_event, url: string) => {
-  await shell.openExternal(url);
+  console.log('[Electron] Opening external URL:', url);
+  try {
+    await shell.openExternal(url);
+    console.log('[Electron] Successfully opened URL');
+  } catch (error) {
+    console.error('[Electron] Error opening URL:', error);
+    throw error;
+  }
 });
