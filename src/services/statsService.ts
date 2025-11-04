@@ -5,7 +5,7 @@ export interface UserStats {
   avatar: string;
   prsCreated: number;
   reviewsGiven: number;
-  avgReviewTime: number; // en días
+  approvalsGiven: number;
   prsAssigned: number;
   oldestPrDays: number;
 }
@@ -35,18 +35,7 @@ export interface OverviewStats {
   mergedPrs: number;
   draftPrs: number;
   pendingReview: number;
-  avgReviewTime: number;
-  avgMergeTime: number;
-  approvalRate: number;
   oldPrsCount: number; // PRs >30 días
-  conflictsCount: number;
-}
-
-export interface TrendData {
-  date: string;
-  prsCreated: number;
-  prsMerged: number;
-  prsReviewed: number;
 }
 
 // Rangos de tiempo disponibles
@@ -117,21 +106,11 @@ export class StatsService {
       pr.state === 'open' && (!pr.reviews || pr.reviews.length === 0)
     ).length;
 
-    // Calcular tiempos promedio (simulado por ahora)
-    const avgReviewTime = this.calculateAverageReviewTime(prsInRange);
-    const avgMergeTime = this.calculateAverageMergeTime(prsInRange);
-
     // PRs antiguas (>30 días)
     const thirtyDaysAgo = new Date(now.getTime() - (30 * 24 * 60 * 60 * 1000));
     const oldPrsCount = pullRequests.filter(pr =>
       pr.state === 'open' && new Date(pr.created_at) < thirtyDaysAgo
     ).length;
-
-    // Tasa de aprobación (simulada)
-    const approvalRate = Math.round(85 + Math.random() * 10); // 85-95%
-
-    // Conflictos pendientes (simulado)
-    const conflictsCount = Math.floor(pullRequests.length * 0.1); // ~10%
 
     const stats: OverviewStats = {
       totalPrs,
@@ -140,11 +119,7 @@ export class StatsService {
       mergedPrs,
       draftPrs,
       pendingReview,
-      avgReviewTime,
-      avgMergeTime,
-      approvalRate,
-      oldPrsCount,
-      conflictsCount
+      oldPrsCount
     };
 
     metricsCache.set(cacheKey, stats);
@@ -171,8 +146,7 @@ export class StatsService {
     const userStats: UserStats[] = users.map(user => {
       const userPrs = prsInRange.filter(pr => pr.user.login === user.username);
       const reviewsGiven = this.countReviewsByUser(prsInRange, user.username);
-
-
+      const approvalsGiven = this.countApprovalsByUser(prsInRange, user.username);
 
       return {
         username: user.username,
@@ -180,7 +154,7 @@ export class StatsService {
         avatar: user.avatar || `https://github.com/${user.username}.png`,
         prsCreated: userPrs.length,
         reviewsGiven,
-        avgReviewTime: Math.round((Math.random() * 5 + 1) * 10) / 10, // 1-6 días
+        approvalsGiven,
         prsAssigned: prsInRange.filter(pr =>
           pr.assignees && pr.assignees.some((a: any) => a.login === user.username)
         ).length,
@@ -202,7 +176,7 @@ export class StatsService {
 
     const repoStats: RepoStats[] = repos.map(repo => {
       // Extraer owner/name de la URL de GitHub
-      const urlMatch = repo.url.match(/github\.com\/([^\/]+)\/([^\/]+)/);
+      const urlMatch = repo.url.match(/github\.com\/([^/]+)\/([^/]+)/);
       if (!urlMatch) {
         console.warn(`Invalid GitHub URL: ${repo.url}`);
         return null;
@@ -238,52 +212,25 @@ export class StatsService {
     return repoStats;
   }
 
-  /**
-   * Genera datos de tendencias temporales
-   */
-  static calculateTrendData(pullRequests: any[], timeRange: string = '30d'): TrendData[] {
-    const cacheKey = `trends-${timeRange}-${pullRequests.length}`;
-    const cached = metricsCache.get(cacheKey);
-    if (cached) return cached;
 
-    const rangeConfig = TIME_RANGES.find(r => r.value === timeRange) || TIME_RANGES[1];
-    const days = rangeConfig.days;
-    const trends: TrendData[] = [];
-
-    for (let i = days - 1; i >= 0; i--) {
-      const date = new Date();
-      date.setDate(date.getDate() - i);
-      const dateStr = date.toISOString().split('T')[0];
-
-      // Simular datos de tendencias
-      trends.push({
-        date: dateStr,
-        prsCreated: Math.floor(Math.random() * 5 + 1),
-        prsMerged: Math.floor(Math.random() * 3 + 1),
-        prsReviewed: Math.floor(Math.random() * 7 + 2)
-      });
-    }
-
-    metricsCache.set(cacheKey, trends);
-    return trends;
-  }
 
   // Métodos auxiliares privados
-  private static calculateAverageReviewTime(_prs: any[]): number {
-    // Simulación - en implementación real calcularíamos basado en timestamps
-    return Math.round((Math.random() * 3 + 2) * 10) / 10; // 2-5 días
-  }
-
-  private static calculateAverageMergeTime(_prs: any[]): number {
-    // Simulación - en implementación real calcularíamos basado en timestamps
-    return Math.round((Math.random() * 5 + 3) * 10) / 10; // 3-8 días
-  }
-
   private static countReviewsByUser(prs: any[], username: string): number {
     return prs.reduce((count, pr) => {
       if (pr.reviews && Array.isArray(pr.reviews)) {
         return count + pr.reviews.filter((review: any) =>
           review.user.login === username
+        ).length;
+      }
+      return count;
+    }, 0);
+  }
+
+  private static countApprovalsByUser(prs: any[], username: string): number {
+    return prs.reduce((count, pr) => {
+      if (pr.reviews && Array.isArray(pr.reviews)) {
+        return count + pr.reviews.filter((review: any) =>
+          review.user.login === username && review.state === 'APPROVED'
         ).length;
       }
       return count;

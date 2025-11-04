@@ -4,7 +4,6 @@ import { githubService, loadConfig, loadRepositories, loadUsers } from '../servi
 import { StatsService } from '../services/statsService';
 import { PullRequestList } from './PullRequestList';
 import { StatsModal } from './StatsModal';
-import './App.css';
 
 // Funciones para manejar localStorage de repositorios seleccionados
 const SELECTED_REPOS_KEY = 'pr-watcher-selected-repos';
@@ -254,24 +253,24 @@ export const App: React.FC = () => {
     const isSamlError = error.includes('SAML') || error.includes('SSO');
 
     return (
-      <div className="app">
-        <div className="error">
-          <h2>{isSamlError ? '🔐 Error de Autenticación SAML' : 'Error'}</h2>
-          <p>{error}</p>
+      <div className="min-h-screen p-5 bg-github-gray-900 text-github-gray-100">
+        <div className="bg-red-900/30 border border-red-600 rounded-github p-5 m-5">
+          <h2 className="text-red-400 mb-2.5 text-lg">{isSamlError ? '🔐 Error de Autenticación SAML' : 'Error'}</h2>
+          <p className="text-red-300">{error}</p>
           {isSamlError && (
-            <div className="error-help">
-              <h3>¿Cómo solucionarlo?</h3>
-              <ol>
-                <li>Ve a <strong>GitHub → Settings → Developer settings → Personal access tokens</strong></li>
-                <li>Busca tu token y haz click en <strong>"Configure SSO"</strong></li>
-                <li>Autoriza la organización <strong>"masorange"</strong></li>
-                <li>Reinicia esta aplicación</li>
+            <div className="mt-5 p-4 bg-gray-800 rounded-github border-l-4 border-blue-500">
+              <h3 className="text-blue-400 mb-2.5 text-base font-medium">¿Cómo solucionarlo?</h3>
+              <ol className="my-2.5 pl-5 text-github-gray-100 list-decimal">
+                <li className="my-2 leading-6">Ve a <strong className="text-white">GitHub → Settings → Developer settings → Personal access tokens</strong></li>
+                <li className="my-2 leading-6">Busca tu token y haz click en <strong className="text-white">"Configure SSO"</strong></li>
+                <li className="my-2 leading-6">Autoriza la organización <strong className="text-white">"masorange"</strong></li>
+                <li className="my-2 leading-6">Reinicia esta aplicación</li>
               </ol>
               <p>
                 <a href="https://docs.github.com/es/enterprise-cloud@latest/authentication/authenticating-with-saml-single-sign-on/authorizing-a-personal-access-token-for-use-with-saml-single-sign-on"
                    target="_blank"
                    rel="noopener noreferrer"
-                   style={{ color: '#58a6ff', textDecoration: 'underline' }}>
+                   className="text-blue-400 underline">
                   Ver documentación completa de GitHub
                 </a>
               </p>
@@ -283,55 +282,60 @@ export const App: React.FC = () => {
   }
 
   return (
-    <div className="app">
-      <header className="app-header">
-        <h1>GitHub PR Watcher</h1>
-        <div className="stats">
-          <span>{pullRequests.length} PRs</span>
+    <div className="min-h-screen p-5 bg-github-gray-900 text-github-gray-100">
+      <header className="flex justify-between items-center p-5 bg-github-gray-800 rounded-github mb-5">
+        <h1 className="text-blue-400 text-2xl font-semibold">GitHub PR Watcher</h1>
+        <div className="flex gap-5 items-center">
+          <span className="px-4 py-2 bg-github-gray-700 rounded-github text-sm">
+            {pullRequests.length} PRs
+          </span>
 
           <button
-            className="stats-btn"
+            className="px-4 py-2 bg-github-green border border-green-600 text-white rounded-github cursor-pointer text-sm font-medium transition-all duration-200 flex items-center gap-1.5 hover:bg-green-600 hover:border-green-500 hover:-translate-y-0.5 hover:shadow-lg hover:shadow-green-600/20 active:translate-y-0 active:shadow-md active:shadow-green-600/20"
             onClick={() => setShowStatsModal(true)}
             title="Ver estadísticas del equipo"
           >
             📊 Estadísticas
           </button>
 
-          <div className="repo-filter" ref={repoMenuRef}>
+          <div className="relative" ref={repoMenuRef}>
             <button
-              className="repo-filter-btn"
+              className="px-4 py-2 bg-github-gray-700 border border-github-gray-600 text-white rounded-github cursor-pointer text-sm font-medium transition-all duration-200 hover:bg-github-gray-600 hover:border-github-gray-500"
               onClick={() => setShowRepoMenu(!showRepoMenu)}
             >
               📁 {repositories.length} repositorios ({selectedRepos.size})
             </button>
             {showRepoMenu && (
-              <div className="repo-menu">
-                <div className="repo-menu-header">
-                  <strong>Filtrar por repositorio</strong>
-                  <button onClick={toggleAllRepos} className="toggle-all-btn">
+              <div className="absolute right-0 top-full mt-2 w-80 bg-github-gray-800 border border-github-gray-600 rounded-github shadow-github-lg z-50">
+                <div className="p-3 border-b border-github-gray-600 flex justify-between items-center">
+                  <strong className="text-sm">Filtrar por repositorio</strong>
+                  <button
+                    onClick={toggleAllRepos}
+                    className="text-xs text-blue-400 hover:text-blue-300 cursor-pointer"
+                  >
                     {selectedRepos.size === repositories.length ? 'Deseleccionar todos' : 'Seleccionar todos'}
                   </button>
                 </div>
-                <div className="repo-list">
+                <div className="max-h-64 overflow-y-auto scrollbar-thin">
                   {repositories.map(repo => {
                     const repoCount = pullRequests.filter(pr => pr.repository.name === repo.name).length;
                     return (
-                      <label key={repo.name} className="repo-item">
+                      <label key={repo.name} className="flex items-center p-2 hover:bg-github-gray-700 cursor-pointer">
                         <input
                           type="checkbox"
                           checked={selectedRepos.has(repo.name)}
                           onChange={() => toggleRepo(repo.name)}
+                          className="mr-2"
                         />
                         <span
-                          className="repo-name"
+                          className="px-2 py-1 rounded text-xs font-medium mr-2 text-white"
                           style={{
-                            backgroundColor: repo.backgroundColor || '#30363d',
-                            color: '#ffffff'
+                            backgroundColor: repo.backgroundColor || '#30363d'
                           }}
                         >
                           {repo.name}
                         </span>
-                        <span className="repo-count">({repoCount})</span>
+                        <span className="text-xs text-github-gray-400">({repoCount})</span>
                       </label>
                     );
                   })}
@@ -343,7 +347,7 @@ export const App: React.FC = () => {
       </header>
 
       {loading && !initialized ? (
-        <div className="loading">Cargando...</div>
+        <div className="text-center py-10 text-lg text-github-gray-400">Cargando...</div>
       ) : (
         <PullRequestList
           pullRequests={pullRequests}

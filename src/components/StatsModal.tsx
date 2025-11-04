@@ -13,7 +13,7 @@ interface StatsModalProps {
 
 type StatsTab = 'overview' | 'users' | 'repos';
 
-type SortField = 'name' | 'prsCreated' | 'reviewsGiven' | 'prsAssigned' | 'avgReviewTime' | 'oldestPrDays';
+type SortField = 'name' | 'prsCreated' | 'reviewsGiven' | 'approvalsGiven' | 'prsAssigned' | 'oldestPrDays';
 type SortDirection = 'asc' | 'desc';
 
 export const StatsModal: React.FC<StatsModalProps> = ({ isOpen, onClose, pullRequests, users, repositories, onRefreshStats }) => {
@@ -80,13 +80,13 @@ export const StatsModal: React.FC<StatsModalProps> = ({ isOpen, onClose, pullReq
           aValue = a.reviewsGiven;
           bValue = b.reviewsGiven;
           break;
+        case 'approvalsGiven':
+          aValue = a.approvalsGiven;
+          bValue = b.approvalsGiven;
+          break;
         case 'prsAssigned':
           aValue = a.prsAssigned;
           bValue = b.prsAssigned;
-          break;
-        case 'avgReviewTime':
-          aValue = a.avgReviewTime;
-          bValue = b.avgReviewTime;
           break;
         case 'oldestPrDays':
           aValue = a.oldestPrDays;
@@ -277,22 +277,22 @@ export const StatsModal: React.FC<StatsModalProps> = ({ isOpen, onClose, pullReq
                     )}
                   </div>
                   <div
-                    className={`table-cell sortable ${sortField === 'prsAssigned' ? 'active' : ''}`}
-                    onClick={() => handleSort('prsAssigned')}
+                    className={`table-cell sortable ${sortField === 'approvalsGiven' ? 'active' : ''}`}
+                    onClick={() => handleSort('approvalsGiven')}
                   >
-                    📋 PRs Asignadas
-                    {sortField === 'prsAssigned' && (
+                    ✅ Approvals
+                    {sortField === 'approvalsGiven' && (
                       <span className="sort-indicator">
                         {sortDirection === 'asc' ? '▲' : '▼'}
                       </span>
                     )}
                   </div>
                   <div
-                    className={`table-cell sortable ${sortField === 'avgReviewTime' ? 'active' : ''}`}
-                    onClick={() => handleSort('avgReviewTime')}
+                    className={`table-cell sortable ${sortField === 'prsAssigned' ? 'active' : ''}`}
+                    onClick={() => handleSort('prsAssigned')}
                   >
-                    ⏱️ Tiempo Promedio
-                    {sortField === 'avgReviewTime' && (
+                    📋 PRs Asignadas
+                    {sortField === 'prsAssigned' && (
                       <span className="sort-indicator">
                         {sortDirection === 'asc' ? '▲' : '▼'}
                       </span>
@@ -326,8 +326,8 @@ export const StatsModal: React.FC<StatsModalProps> = ({ isOpen, onClose, pullReq
                     </div>
                     <div className="table-cell">{user.prsCreated}</div>
                     <div className="table-cell">{user.reviewsGiven}</div>
+                    <div className="table-cell">{user.approvalsGiven}</div>
                     <div className="table-cell">{user.prsAssigned}</div>
-                    <div className="table-cell">{user.avgReviewTime}d</div>
                     <div className="table-cell">
                       {user.oldestPrDays > 0 ? `${user.oldestPrDays}d` : 'N/A'}
                     </div>
@@ -343,7 +343,7 @@ export const StatsModal: React.FC<StatsModalProps> = ({ isOpen, onClose, pullReq
 
               {sortedUserStats.length > 0 && (
                 <div className="table-footer">
-                  <p>Mostrando {sortedUserStats.length} usuarios • Haz clic en las columnas para ordenar</p>
+                  <p>Mostrando {sortedUserStats.length} usuarios del equipo • Haz clic en las columnas para ordenar</p>
                 </div>
               )}
             </div>
