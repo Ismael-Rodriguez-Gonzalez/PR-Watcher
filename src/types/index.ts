@@ -61,6 +61,8 @@ export interface PullRequest {
   html_url: string;
   repository: Repository;
   reviews?: Review[];
+  mergeable?: boolean | null;
+  mergeable_state?: 'clean' | 'dirty' | 'unstable' | 'blocked' | 'behind' | 'draft' | 'unknown';
 }
 
 export interface PRListItem extends PullRequest {

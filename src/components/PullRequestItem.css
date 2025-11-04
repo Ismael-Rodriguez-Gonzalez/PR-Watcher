@@ -2,7 +2,7 @@
   background-color: #0d1117;
   border: 1px solid #30363d;
   border-radius: 6px;
-  padding: 16px;
+  padding: 12px;
   transition: all 0.2s;
 }
 
@@ -16,21 +16,22 @@
 }
 
 .pr-header {
-  margin-bottom: 16px;
+  margin-bottom: 10px;
 }
 
 .pr-title-section {
   display: flex;
   flex-direction: column;
-  gap: 8px;
+  gap: 6px;
 }
 
 .pr-title {
   color: #58a6ff;
-  font-size: 16px;
+  font-size: 15px;
   font-weight: 600;
   cursor: pointer;
   margin: 0;
+  line-height: 1.3;
 }
 
 .pr-title:hover {
@@ -39,8 +40,10 @@
 
 .pr-meta {
   display: flex;
-  gap: 12px;
+  gap: 8px;
   align-items: center;
+  flex-wrap: wrap;
+  margin-top: 2px;
 }
 
 .pr-number {
@@ -50,10 +53,10 @@
 
 .pr-repo {
   color: #ffffff;
-  font-size: 14px;
+  font-size: 12px;
   background-color: #1f6feb; /* Color por defecto, será sobrescrito por styles inline */
-  padding: 4px 12px;
-  border-radius: 6px;
+  padding: 2px 8px;
+  border-radius: 4px;
   font-weight: 600;
   text-shadow: 0 1px 2px rgba(0, 0, 0, 0.3);
   box-shadow: 0 1px 3px rgba(0, 0, 0, 0.2);
@@ -72,20 +75,21 @@
 .pr-info {
   display: flex;
   flex-direction: column;
-  gap: 12px;
+  gap: 8px;
 }
 
 .info-row {
   display: flex;
-  gap: 24px;
+  gap: 16px;
   flex-wrap: wrap;
+  align-items: center;
 }
 
 .info-item {
   display: flex;
-  gap: 8px;
+  gap: 6px;
   align-items: center;
-  font-size: 14px;
+  font-size: 13px;
 }
 
 .info-item strong {
@@ -99,40 +103,144 @@
 }
 
 .avatar {
-  width: 24px;
-  height: 24px;
-  border-radius: 50%;
-}
-
-.avatar-small {
   width: 20px;
   height: 20px;
   border-radius: 50%;
 }
 
+.avatar-small {
+  width: 18px;
+  height: 18px;
+  border-radius: 50%;
+}
+
 .branch-info {
   font-family: 'Courier New', monospace;
-  background-color: #21262d;
-  padding: 2px 8px;
+  display: inline-flex;
+  align-items: center;
+  gap: 8px;
+  padding: 3px 8px;
   border-radius: 4px;
-  font-size: 13px;
+  font-size: 12px;
+  font-weight: bold;
+  box-shadow: 0 1px 3px rgba(0, 0, 0, 0.2);
+}
+
+/* Estilo para la flecha entre ramas */
+.branch-info::after {
+  content: none;
+}
+
+.branch-arrow {
+  font-weight: bold;
+  font-size: 16px;
+  color: #58a6ff;
+  text-shadow: 0 0 4px rgba(88, 166, 255, 0.4);
+  margin: 0 6px;
+  user-select: none;
+}
+
+/* Indicador de estado de merge */
+.merge-status {
+  display: inline-flex;
+  align-items: center;
+  font-size: 10px;
+  font-weight: bold;
+  padding: 2px 6px;
+  border-radius: 10px;
+  margin-left: 8px;
+  text-transform: uppercase;
+  letter-spacing: 0.5px;
+  vertical-align: middle;
+}
+
+/* Indicador de estado en el título */
+.pr-title .merge-status {
+  font-size: 9px;
+  padding: 1px 4px;
+  margin-left: 6px;
+}
+
+.merge-status.mergeable {
+  background-color: #1a2e1a;
+  color: #56d364;
+  border: 1px solid rgba(86, 211, 100, 0.3);
+}
+
+.merge-status.conflicts {
+  background-color: #2d0d0d;
+  color: #f85149;
+  border: 1px solid rgba(248, 81, 73, 0.3);
+}
+
+.merge-status.blocked {
+  background-color: #2d2a0e;
+  color: #e3b341;
+  border: 1px solid rgba(227, 179, 65, 0.3);
+}
+
+.merge-status.unknown {
+  background-color: #1c2128;
+  color: #8b949e;
+  border: 1px solid rgba(139, 148, 158, 0.3);
+}
+
+.merge-status-icon {
+  margin-right: 3px;
+  font-size: 12px;
+}
+
+.branch-name {
+  padding: 2px 6px;
+  border-radius: 3px;
+  font-weight: bold;
+  text-shadow: 0 1px 1px rgba(0, 0, 0, 0.7);
+}
+
+/* Rama objetivo (head) - Verde */
+.branch-name.head {
+  background-color: #0f2419;
+  color: #56d364;
+  border: 1px solid rgba(86, 211, 100, 0.4);
+}
+
+/* Rama base (base) - Amarillo */
+.branch-name.base {
+  background-color: #2d2a0e;
+  color: #e3b341;
+  border: 1px solid rgba(227, 179, 65, 0.4);
+}
+
+/* Caso especial: master - Rojo */
+.branch-name.master {
+  background-color: #2d0d0d;
+  color: #f85149;
+  border: 1px solid rgba(248, 81, 73, 0.4);
+}
+
+.branch-arrow {
+  color: #8b949e;
+  font-weight: normal;
+  margin: 0 2px;
 }
 
 .comments-count {
   background-color: #21262d;
-  padding: 2px 8px;
-  border-radius: 4px;
+  padding: 2px 6px;
+  border-radius: 3px;
+  font-size: 12px;
 }
 
 .assignees-section {
-  flex-direction: column;
-  align-items: flex-start;
-  gap: 8px;
+  flex-direction: row;
+  align-items: center;
+  gap: 6px;
+  flex: 1;
 }
 
 .assignees {
   display: flex;
-  gap: 8px;
+  gap: 6px;
   flex-wrap: wrap;
 }
 
@@ -143,12 +251,12 @@
 
 .assignee {
   display: flex;
-  gap: 6px;
+  gap: 4px;
   align-items: center;
   background-color: #21262d;
-  padding: 4px 8px;
+  padding: 3px 6px;
   border-radius: 4px;
-  font-size: 13px;
+  font-size: 12px;
 }
 
 .remove-btn {
@@ -175,13 +283,13 @@
 }
 
 .assign-btn {
-  padding: 6px 12px;
+  padding: 4px 10px;
   background-color: #238636;
   color: white;
   border: none;
-  border-radius: 6px;
+  border-radius: 4px;
   cursor: pointer;
-  font-size: 14px;
+  font-size: 12px;
   font-weight: 500;
   transition: background-color 0.2s;
 }
@@ -335,17 +443,17 @@
 .reviews {
   display: flex;
   flex-wrap: wrap;
-  gap: 8px;
-  margin-top: 4px;
+  gap: 6px;
+  margin-top: 2px;
 }
 
 .review {
   display: flex;
   align-items: center;
-  gap: 6px;
-  padding: 4px 8px;
-  border-radius: 4px;
-  font-size: 13px;
+  gap: 4px;
+  padding: 3px 6px;
+  border-radius: 3px;
+  font-size: 11px;
   border: 1px solid transparent;
 }
 
@@ -437,19 +545,59 @@
   background-color: rgba(46, 160, 67, 0.1);
 }
 
-/* Mostrar icono solo al hacer hover en la PR */
+/* Icono de copiar siempre visible */
 .pr-item .copy-url-icon {
-  opacity: 0;
-  visibility: hidden;
-}
-
-.pr-item:hover .copy-url-icon,
-.copy-url-icon.copied {
   opacity: 0.7;
   visibility: visible;
 }
 
-.pr-item:hover .copy-url-icon:hover,
+.pr-item .copy-url-icon:hover,
 .copy-url-icon.copied {
   opacity: 1;
+}
+
+/* Optimizaciones para mayor densidad */
+@media (max-width: 1200px) {
+  .info-row {
+    gap: 12px;
+  }
+
+  .info-item {
+    font-size: 12px;
+  }
+
+  .pr-title {
+    font-size: 14px;
+  }
+}
+
+@media (max-width: 768px) {
+  .pr-item {
+    padding: 10px;
+  }
+
+  .info-row {
+    flex-direction: column;
+    gap: 6px;
+    align-items: flex-start;
+  }
+
+  .assignees-section {
+    flex-direction: column;
+    align-items: flex-start;
+  }
+
+  .branch-info {
+    font-size: 11px;
+    padding: 2px 6px;
+  }
+
+  .branch-name {
+    font-size: 10px;
+    padding: 1px 4px;
+  }
+
+  .pr-meta {
+    gap: 6px;
+  }
 }

@@ -52,7 +52,9 @@ class GitHubService {
             return {
               ...prDetailResponse.data,
               repository: repo,
-              reviews: reviewsResponse.data
+              reviews: reviewsResponse.data,
+              mergeable: prDetailResponse.data.mergeable,
+              mergeable_state: prDetailResponse.data.mergeable_state
             };
           } catch (error) {
             console.error(`Error fetching details for PR #${pr.number}:`, error);

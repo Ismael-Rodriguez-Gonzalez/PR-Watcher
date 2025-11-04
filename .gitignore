@@ -29,5 +29,15 @@ release
 .env.local
 .env.production
 
-# Optional: Keep config.json in gitignore if users prefer file-based config
-# config/config.json
+# Configuration files with sensitive data (tokens)
+config/config.json
+
+# Temporary files and OS-specific
+.DS_Store
+Thumbs.db
+*.tmp
+*.swp
+*~
+
+# Build and development artifacts
+*.tsbuildinfo

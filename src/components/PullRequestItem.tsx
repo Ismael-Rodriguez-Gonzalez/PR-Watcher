@@ -24,6 +24,37 @@ export const PullRequestItem: React.FC<Props> = ({
   const [copyFeedback, setCopyFeedback] = useState(false);
   const assignContainerRef = useRef<HTMLDivElement>(null);
 
+  // Función para determinar la clase CSS de una rama
+  const getBranchClass = (branchName: string, isBase: boolean): string => {
+    if (branchName === 'master' || branchName === 'main') {
+      return 'branch-name master';
+    }
+    // isBase = true para la rama donde se va a mergear (base)
+    // isBase = false para la rama con los cambios (head)
+    return isBase ? 'branch-name base' : 'branch-name head';
+  };
+
+  const getMergeStatus = (pr: PullRequest): { status: string; icon: string; text: string } => {
+    if (pr.mergeable === null || pr.mergeable_state === 'unknown') {
+      return { status: 'unknown', icon: '❓', text: 'Checking' };
+    }
+
+    if (pr.mergeable === false || pr.mergeable_state === 'dirty') {
+      return { status: 'conflicts', icon: '⚠️', text: 'Conflicts' };
+    }
+
+    if (pr.mergeable_state === 'blocked') {
+      return { status: 'blocked', icon: '🚫', text: 'Blocked' };
+    }
+
+    if (pr.mergeable === true && pr.mergeable_state === 'clean') {
+      return { status: 'mergeable', icon: '✅', text: 'Ready' };
+    }
+
+    // Para otros estados como 'behind', 'unstable', etc.
+    return { status: 'unknown', icon: '⏳', text: pr.mergeable_state || 'Unknown' };
+  };
+
   // Calcular posición del menú para evitar que se salga de la pantalla
   const calculateMenuPosition = () => {
     if (assignContainerRef.current) {
@@ -166,6 +197,15 @@ export const PullRequestItem: React.FC<Props> = ({
             >
               {copyFeedback ? '✓' : '📋'}
             </button>
+            {(() => {
+              const mergeStatus = getMergeStatus(pr);
+              return (
+                <span className={`merge-status ${mergeStatus.status}`} title={`Merge status: ${mergeStatus.text}`}>
+                  <span className="merge-status-icon">{mergeStatus.icon}</span>
+                  {mergeStatus.text}
+                </span>
+              );
+            })()}
           </h3>
           <div className="pr-meta">
             <span className="pr-number">#{pr.number}</span>
@@ -178,6 +218,15 @@ export const PullRequestItem: React.FC<Props> = ({
             >
               {pr.repository.name}
             </span>
+            <div className="branch-info">
+              <span className={getBranchClass(pr.head.ref, false)}>
+                {pr.head.ref}
+              </span>
+              <span className="branch-arrow">→</span>
+              <span className={getBranchClass(pr.base.ref, true)}>
+                {pr.base.ref}
+              </span>
+            </div>
             {pr.draft && <span className="draft-badge">DRAFT</span>}
           </div>
         </div>
@@ -186,7 +235,6 @@ export const PullRequestItem: React.FC<Props> = ({
       <div className="pr-info">
         <div className="info-row">
           <div className="info-item">
-            <strong>Autor:</strong>
             <div className="user-info">
               <img src={pr.user.avatar_url} alt={pr.user.login} className="avatar" />
               <span>{pr.user.login}</span>
@@ -194,16 +242,6 @@ export const PullRequestItem: React.FC<Props> = ({
           </div>
 
           <div className="info-item">
-            <strong>Rama:</strong>
-            <span className="branch-info">
-              {pr.head.ref} → {pr.base.ref}
-            </span>
-          </div>
-        </div>
-
-        <div className="info-row">
-          <div className="info-item">
-            <strong>Creada:</strong>
             <span>
               {formatDistanceToNow(new Date(pr.created_at), {
                 addSuffix: true,
@@ -213,7 +251,6 @@ export const PullRequestItem: React.FC<Props> = ({
           </div>
 
           <div className="info-item">
-            <strong>Comentarios:</strong>
             <span className="comments-count">
               💬 {(pr.comments || 0) + (pr.review_comments || 0)} {pr.review_comments > 0 && `(${pr.review_comments} en código)`}
             </span>
@@ -257,7 +294,6 @@ export const PullRequestItem: React.FC<Props> = ({
 
         <div className="info-row">
           <div className="info-item assignees-section">
-            <strong>Asignados:</strong>
             <div className="assignees">
               {pr.assignees.length === 0 ? (
                 <span className="no-assignees">Sin asignar</span>
