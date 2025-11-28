@@ -13,7 +13,8 @@
     "build:mac": "npm run build -- --mac",
     "build:linux": "npm run build -- --linux",
     "preview": "vite preview",
-    "clean": "rm -rf dist build release"
+    "clean": "rm -rf dist build release",
+    "update-repos": "node scripts/update-repos.js"
   },
   "keywords": [
     "electron",

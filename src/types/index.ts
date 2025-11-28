@@ -11,6 +11,7 @@ export interface Repository {
   repo?: string;
   enabled?: boolean;
   backgroundColor?: string;
+  refreshInterval?: number; // Intervalo de actualización en segundos (debería estar siempre presente, fallback: 7200s)
 }
 
 export interface User {
@@ -67,4 +68,9 @@ export interface PullRequest {
 
 export interface PRListItem extends PullRequest {
   repositoryName: string;
+}
+
+// Tipos para el estado de los repositorios
+export interface RepoState {
+  lastUpdates: Record<string, number>; // URL del repo -> timestamp (ms)
 }

@@ -1,0 +1,10 @@
+{
+  "lastUpdates": {
+    "https://github.com/owner/repo1": 1732618800000,
+    "https://github.com/owner/repo2": 1732618900000
+  },
+  "cachedPRs": {
+    "https://github.com/owner/repo1": [],
+    "https://github.com/owner/repo2": []
+  }
+}

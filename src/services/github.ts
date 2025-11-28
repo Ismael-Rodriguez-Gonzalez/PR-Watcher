@@ -275,16 +275,16 @@ export async function loadConfig(): Promise<Config> {
   }
 }
 
-export async function loadRepositories(): Promise<Repository[]> {
+export async function loadRepositories(): Promise<{ repos: Repository[]; defaultRefreshInterval: number }> {
   try {
     if (window.electronAPI) {
       return await window.electronAPI.loadRepositories();
     }
     console.error('electronAPI not available');
-    return [];
+    return { repos: [], defaultRefreshInterval: 7200 };
   } catch (error) {
     console.error('Error loading repositories:', error);
-    return [];
+    return { repos: [], defaultRefreshInterval: 7200 };
   }
 }
 

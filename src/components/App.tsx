@@ -4,6 +4,8 @@ import { githubService, loadConfig, loadRepositories, loadUsers } from '../servi
 import { StatsService } from '../services/statsService';
 import { PullRequestList } from './PullRequestList';
 import { StatsModal } from './StatsModal';
+import { TokenSetupModal } from './TokenSetupModal';
+import { SettingsModal } from './SettingsModal';
 
 // Funciones para manejar localStorage de repositorios seleccionados
 const SELECTED_REPOS_KEY = 'pr-watcher-selected-repos';
@@ -41,6 +43,13 @@ export const App: React.FC = () => {
   const [selectedRepos, setSelectedRepos] = useState<Set<string>>(new Set());
   const [showRepoMenu, setShowRepoMenu] = useState(false);
   const [showStatsModal, setShowStatsModal] = useState(false);
+  const [showTokenSetup, setShowTokenSetup] = useState(false);
+  const [showSettingsModal, setShowSettingsModal] = useState(false);
+  const [currentConfig, setCurrentConfig] = useState({ githubToken: '', refreshInterval: 60 });
+  const [defaultRefreshInterval, setDefaultRefreshInterval] = useState(7200); // 2 horas por defecto
+  const [repoLastUpdate, setRepoLastUpdate] = useState<Record<string, number>>({}); // Timestamps de última actualización
+  const [repoSearchFilter, setRepoSearchFilter] = useState(''); // Filtro de búsqueda para repos
+  const [refreshingRepos, setRefreshingRepos] = useState<Set<string>>(new Set()); // Repos que se están actualizando
   const repoMenuRef = React.useRef<HTMLDivElement>(null);
 
   useEffect(() => {
@@ -52,6 +61,7 @@ export const App: React.FC = () => {
     const handleClickOutside = (event: MouseEvent) => {
       if (repoMenuRef.current && !repoMenuRef.current.contains(event.target as Node)) {
         setShowRepoMenu(false);
+        setRepoSearchFilter(''); // Limpiar filtro al cerrar
       }
     };
 
@@ -87,19 +97,50 @@ export const App: React.FC = () => {
     saveSelectedReposToStorage(newSelectedRepos);
   };
 
+  const formatTimeSinceUpdate = (timestamp: number | undefined): string => {
+    if (!timestamp) return 'Nunca';
+
+    const now = Date.now();
+    const diffMs = now - timestamp;
+    const diffMins = Math.floor(diffMs / 60000);
+    const diffHours = Math.floor(diffMs / 3600000);
+    const diffDays = Math.floor(diffMs / 86400000);
+
+    if (diffMins < 1) return 'Ahora';
+    if (diffMins < 60) return `${diffMins}m`;
+    if (diffHours < 24) return `${diffHours}h`;
+    return `${diffDays}d`;
+  };
+
   const initializeApp = async () => {
     try {
       // Cargar configuración (ahora son funciones asíncronas)
       const config = await loadConfig();
-      const repos = await loadRepositories();
+      const { repos, defaultRefreshInterval } = await loadRepositories();
       const availableUsers = await loadUsers();
+      const repoState = await window.electronAPI.loadRepoState();
 
       console.log('Config loaded:', { hasToken: !!config.githubToken, refreshInterval: config.refreshInterval });
-      console.log('Repositories loaded:', repos);
+      console.log('Repositories loaded:', repos.length);
+      console.log('Default refresh interval:', defaultRefreshInterval);
       console.log('Users loaded:', availableUsers);
+      console.log('Repo state loaded:', Object.keys(repoState.lastUpdates || {}).length, 'repos');
 
+      setCurrentConfig(config);
+      setDefaultRefreshInterval(defaultRefreshInterval);
       setRepositories(repos);
       setUsers(availableUsers);
+
+      // Cargar timestamps persistidos
+      setRepoLastUpdate(repoState.lastUpdates || {});
+
+      // Cargar PRs cacheadas si existen
+      if (repoState.cachedPRs && Object.keys(repoState.cachedPRs).length > 0) {
+        const cachedPRsList = Object.values(repoState.cachedPRs).flat();
+        console.log('[Cache] Loading', cachedPRsList.length, 'cached PRs from previous session');
+        setPullRequests(cachedPRsList);
+        setLoading(false); // Mostrar PRs cacheadas inmediatamente
+      }
 
       // Cargar configuración guardada de repositorios seleccionados
       const savedSelectedRepos = loadSelectedReposFromStorage();
@@ -117,7 +158,7 @@ export const App: React.FC = () => {
       }
 
       if (!config.githubToken) {
-        setError('Por favor, configura tu token de GitHub en config.json');
+        setShowTokenSetup(true);
         setLoading(false);
         return;
       }
@@ -126,14 +167,14 @@ export const App: React.FC = () => {
       githubService.initialize(config.githubToken);
       setInitialized(true);
 
-      // Cargar PRs
+      // Cargar PRs (forzar refresco inicial)
       console.log('Starting to load pull requests...');
-      await loadPullRequests(repos);
+      await loadPullRequests(repos, true);
 
-      // Configurar auto-refresh
+      // Configurar auto-refresh (verificar cada 30 segundos qué repos necesitan actualización)
       const interval = setInterval(() => {
-        loadPullRequests(repos);
-      }, config.refreshInterval * 1000);
+        loadPullRequests(repos, false);
+      }, 30000); // 30 segundos
 
       return () => clearInterval(interval);
     } catch (err) {
@@ -143,27 +184,186 @@ export const App: React.FC = () => {
     }
   };
 
-  const loadPullRequests = async (repos: Repository[]) => {
+  const loadPullRequests = async (repos: Repository[], forceRefresh = false) => {
     try {
-      setLoading(true);
-      console.log(`Loading PRs from ${repos.length} repositories...`);
+      const now = Date.now();
+      const MAX_REPOS_PER_CYCLE = 50; // Limitar repos por ciclo para evitar spikes
 
-      // Cargar PRs abiertas para la vista principal
-      const openPrs = await githubService.getAllPullRequests(repos);
-      console.log(`Open PRs loaded: ${openPrs.length}`);
-      setPullRequests(openPrs);
+      // Determinar qué repos necesitan actualización
+      let reposToUpdate = repos.filter(repo => {
+        if (forceRefresh) return true;
 
-      // Cargar todas las PRs para estadísticas (en paralelo)
-      const allPrsForStats = await githubService.getAllPullRequestsForStats(repos);
-      console.log(`All PRs for stats loaded: ${allPrsForStats.length}`);
-      setAllPullRequestsForStats(allPrsForStats);
+        const lastUpdate = repoLastUpdate[repo.url] || 0;
+        // Cada repo debe tener refreshInterval, fallback a 7200 por seguridad
+        const repoInterval = (repo.refreshInterval || 7200) * 1000; // Convertir a ms
+
+        // Añadir jitter (±10% aleatorio) para evitar sincronización
+        const jitter = (Math.random() * 0.2 - 0.1) * repoInterval; // -10% a +10%
+        const effectiveInterval = repoInterval + jitter;
+
+        const shouldUpdate = (now - lastUpdate) >= effectiveInterval;
+
+        if (shouldUpdate) {
+          console.log(`[Refresh] ${repo.name} needs update (last: ${Math.floor((now - lastUpdate) / 1000)}s ago, interval: ${Math.floor(effectiveInterval / 1000)}s)`);
+        }
+
+        return shouldUpdate;
+      });
+
+      // Limitar cantidad de repos a actualizar por ciclo
+      if (reposToUpdate.length > MAX_REPOS_PER_CYCLE) {
+        console.log(`[Refresh] Limiting update to ${MAX_REPOS_PER_CYCLE} repos (${reposToUpdate.length} pending)`);
+        reposToUpdate = reposToUpdate.slice(0, MAX_REPOS_PER_CYCLE);
+      }
+
+      if (reposToUpdate.length === 0 && !forceRefresh) {
+        console.log('[Refresh] No repositories need update at this time');
+        return;
+      }
+
+      setLoading(reposToUpdate.length > 10); // Solo mostrar loading si son muchos repos
+      console.log(`[Refresh] Loading PRs from ${reposToUpdate.length}/${repos.length} repositories...`);
+
+      // Cargar PRs solo de los repos que necesitan actualización
+      const newOpenPrs = await githubService.getAllPullRequests(reposToUpdate);
+      console.log(`[Refresh] New PRs loaded: ${newOpenPrs.length}`);
+
+      // Combinar con PRs existentes de repos que no se actualizaron
+      setPullRequests(prevPRs => {
+        // Filtrar PRs de repos que se están actualizando
+        const repoNamesToUpdate = new Set(reposToUpdate.map(r => r.name));
+        const unchangedPRs = prevPRs.filter(pr => !repoNamesToUpdate.has(pr.repository.name));
+
+        // Combinar PRs no cambiadas con las nuevas
+        const updatedPRs = [...unchangedPRs, ...newOpenPrs];
+
+        // Guardar PRs en cache organizadas por repo
+        const prsByRepo: Record<string, PullRequest[]> = {};
+        updatedPRs.forEach(pr => {
+          if (!prsByRepo[pr.repository.url]) {
+            prsByRepo[pr.repository.url] = [];
+          }
+          prsByRepo[pr.repository.url].push(pr);
+        });
+
+        return updatedPRs;
+      });
+
+      // Actualizar timestamps con distribución aleatoria en primer refresco
+      setRepoLastUpdate(prev => {
+        const updated = { ...prev };
+        reposToUpdate.forEach(repo => {
+          if (forceRefresh && !prev[repo.url]) {
+            // Primera carga: distribuir aleatoriamente dentro del intervalo
+            const repoInterval = (repo.refreshInterval || 7200) * 1000;
+            const randomOffset = Math.random() * repoInterval;
+            updated[repo.url] = now - randomOffset;
+            console.log(`[Init] ${repo.name} (${repo.refreshInterval || 7200}s) scheduled for next update in ${Math.floor(randomOffset / 1000)}s`);
+          } else {
+            // Actualización normal
+            updated[repo.url] = now;
+          }
+        });
+
+        return updated;
+      });
+
+      // Guardar estado persistente (necesitamos esperar a que setPullRequests termine)
+      // Usamos setTimeout para asegurar que el estado se actualice primero
+      setTimeout(() => {
+        setPullRequests(currentPRs => {
+          // Organizar PRs por repo para guardar en cache
+          const prsByRepo: Record<string, PullRequest[]> = {};
+          currentPRs.forEach(pr => {
+            if (!prsByRepo[pr.repository.url]) {
+              prsByRepo[pr.repository.url] = [];
+            }
+            prsByRepo[pr.repository.url].push(pr);
+          });
+
+          // Guardar timestamps y PRs cacheadas
+          setRepoLastUpdate(currentTimestamps => {
+            window.electronAPI.saveRepoState({
+              lastUpdates: currentTimestamps,
+              cachedPRs: prsByRepo
+            }).catch(err => {
+              console.warn('[Refresh] Error saving repo state:', err);
+            });
+            return currentTimestamps;
+          });
+
+          return currentPRs;
+        });
+      }, 0);
 
       setError(null);
     } catch (err) {
-      console.error('Error loading PRs:', err);
+      console.error('[Refresh] Error loading PRs:', err);
       setError(`Error al cargar PRs: ${err}`);
     } finally {
       setLoading(false);
+    }
+  };
+
+  const refreshSingleRepo = async (repo: Repository) => {
+    try {
+      setRefreshingRepos(prev => new Set(prev).add(repo.url));
+      console.log(`[Manual Refresh] Updating ${repo.name}...`);
+
+      // Cargar PRs del repositorio específico
+      const newPRs = await githubService.getPullRequests(repo);
+      console.log(`[Manual Refresh] ${newPRs.length} PRs loaded for ${repo.name}`);
+
+      // Actualizar lista de PRs (reemplazar PRs de este repo)
+      setPullRequests(prevPRs => {
+        const otherPRs = prevPRs.filter(pr => pr.repository.url !== repo.url);
+        return [...otherPRs, ...newPRs];
+      });
+
+      // Actualizar timestamp
+      const now = Date.now();
+      setRepoLastUpdate(prev => {
+        const updated = { ...prev, [repo.url]: now };
+        return updated;
+      });
+
+      // Guardar estado persistente con PRs actualizadas
+      setTimeout(() => {
+        setPullRequests(currentPRs => {
+          // Organizar PRs por repo para guardar en cache
+          const prsByRepo: Record<string, PullRequest[]> = {};
+          currentPRs.forEach(pr => {
+            if (!prsByRepo[pr.repository.url]) {
+              prsByRepo[pr.repository.url] = [];
+            }
+            prsByRepo[pr.repository.url].push(pr);
+          });
+
+          // Guardar timestamps y PRs cacheadas
+          setRepoLastUpdate(currentTimestamps => {
+            window.electronAPI.saveRepoState({
+              lastUpdates: currentTimestamps,
+              cachedPRs: prsByRepo
+            }).catch(err => {
+              console.warn('[Manual Refresh] Error saving repo state:', err);
+            });
+            return currentTimestamps;
+          });
+
+          return currentPRs;
+        });
+      }, 0);
+
+      console.log(`[Manual Refresh] ${repo.name} updated successfully`);
+    } catch (err) {
+      console.error(`[Manual Refresh] Error updating ${repo.name}:`, err);
+      alert(`Error al actualizar ${repo.name}: ${err}`);
+    } finally {
+      setRefreshingRepos(prev => {
+        const newSet = new Set(prev);
+        newSet.delete(repo.url);
+        return newSet;
+      });
     }
   };
 
@@ -215,7 +415,7 @@ export const App: React.FC = () => {
       // Los datos se sincronizarán en la próxima actualización automática
     } catch (err) {
       // En caso de error, revertir la actualización optimista
-      await loadPullRequests(repositories);
+      await loadPullRequests(repositories, true);
       alert(`Error al asignar usuario: ${err}`);
     }
   };
@@ -244,8 +444,60 @@ export const App: React.FC = () => {
       // Los datos se sincronizarán en la próxima actualización automática
     } catch (err) {
       // En caso de error, revertir la actualización optimista
-      await loadPullRequests(repositories);
+      await loadPullRequests(repositories, true);
       alert(`Error al eliminar asignación: ${err}`);
+    }
+  };
+
+  const handleTokenSaved = async (token: string) => {
+    setShowTokenSetup(false);
+    setLoading(true);
+
+    try {
+      // Inicializar servicio de GitHub con el nuevo token
+      githubService.initialize(token);
+      setInitialized(true);
+
+      // Cargar PRs (forzar refresco)
+      console.log('Starting to load pull requests with new token...');
+      await loadPullRequests(repositories, true);
+
+      // Configurar auto-refresh
+      const config = await loadConfig();
+      setCurrentConfig(config);
+      const interval = setInterval(() => {
+        loadPullRequests(repositories, false);
+      }, 30000); // 30 segundos
+
+      return () => clearInterval(interval);
+    } catch (err) {
+      console.error('Error initializing with new token:', err);
+      setError(`Error al inicializar con el token: ${err}`);
+      setLoading(false);
+    }
+  };
+
+  const handleSettingsSaved = async (config: { githubToken: string; refreshInterval: number }) => {
+    setLoading(true);
+
+    try {
+      // Actualizar configuración en el estado
+      setCurrentConfig(config);
+
+      // Reinicializar servicio de GitHub con el nuevo token
+      githubService.initialize(config.githubToken);
+      setInitialized(true);
+
+      // Recargar PRs (forzar refresco)
+      console.log('Reloading pull requests with updated config...');
+      await loadPullRequests(repositories, true);
+
+      setError(null);
+    } catch (err) {
+      console.error('Error applying new config:', err);
+      setError(`Error al aplicar la configuración: ${err}`);
+    } finally {
+      setLoading(false);
     }
   };
 
@@ -298,6 +550,14 @@ export const App: React.FC = () => {
             📊 Estadísticas
           </button>
 
+          <button
+            className="px-4 py-2 bg-github-gray-700 border border-github-gray-600 text-white rounded-github cursor-pointer text-sm font-medium transition-all duration-200 flex items-center gap-1.5 hover:bg-github-gray-600 hover:border-github-gray-500"
+            onClick={() => setShowSettingsModal(true)}
+            title="Configuración"
+          >
+            ⚙️ Configuración
+          </button>
+
           <div className="relative" ref={repoMenuRef}>
             <button
               className="px-4 py-2 bg-github-gray-700 border border-github-gray-600 text-white rounded-github cursor-pointer text-sm font-medium transition-all duration-200 hover:bg-github-gray-600 hover:border-github-gray-500"
@@ -305,8 +565,8 @@ export const App: React.FC = () => {
             >
               📁 {repositories.length} repositorios ({selectedRepos.size})
             </button>
-            {showRepoMenu && (
-              <div className="absolute right-0 top-full mt-2 w-80 bg-github-gray-800 border border-github-gray-600 rounded-github shadow-github-lg z-50">
+{showRepoMenu && (
+              <div ref={repoMenuRef} className="absolute right-0 top-full mt-2 w-80 bg-github-gray-800 border border-github-gray-600 rounded-github shadow-github-lg z-50">
                 <div className="p-3 border-b border-github-gray-600 flex justify-between items-center">
                   <strong className="text-sm">Filtrar por repositorio</strong>
                   <button
@@ -316,29 +576,68 @@ export const App: React.FC = () => {
                     {selectedRepos.size === repositories.length ? 'Deseleccionar todos' : 'Seleccionar todos'}
                   </button>
                 </div>
+                <div className="p-2 border-b border-github-gray-600">
+                  <input
+                    type="text"
+                    placeholder="Buscar repositorio..."
+                    value={repoSearchFilter}
+                    onChange={(e) => setRepoSearchFilter(e.target.value)}
+                    className="w-full px-3 py-2 bg-github-gray-900 border border-github-gray-600 rounded text-sm text-white placeholder-github-gray-500 focus:outline-none focus:border-blue-500"
+                  />
+                </div>
                 <div className="max-h-64 overflow-y-auto scrollbar-thin">
-                  {repositories.map(repo => {
-                    const repoCount = pullRequests.filter(pr => pr.repository.name === repo.name).length;
-                    return (
-                      <label key={repo.name} className="flex items-center p-2 hover:bg-github-gray-700 cursor-pointer">
-                        <input
-                          type="checkbox"
-                          checked={selectedRepos.has(repo.name)}
-                          onChange={() => toggleRepo(repo.name)}
-                          className="mr-2"
-                        />
-                        <span
-                          className="px-2 py-1 rounded text-xs font-medium mr-2 text-white"
-                          style={{
-                            backgroundColor: repo.backgroundColor || '#30363d'
-                          }}
-                        >
-                          {repo.name}
-                        </span>
-                        <span className="text-xs text-github-gray-400">({repoCount})</span>
-                      </label>
-                    );
-                  })}
+{repositories
+                    .filter(repo =>
+                      repo.name.toLowerCase().includes(repoSearchFilter.toLowerCase()) ||
+                      repo.url.toLowerCase().includes(repoSearchFilter.toLowerCase())
+                    )
+                    .map(repo => {
+                      const repoCount = pullRequests.filter(pr => pr.repository.name === repo.name).length;
+                      const isRefreshing = refreshingRepos.has(repo.url);
+                      const lastUpdate = repoLastUpdate[repo.url];
+                      const timeSinceUpdate = formatTimeSinceUpdate(lastUpdate);
+                      return (
+                        <div key={repo.name} className="flex items-center p-2 hover:bg-github-gray-700 group">
+                          <label className="flex items-center flex-1 cursor-pointer">
+                            <input
+                              type="checkbox"
+                              checked={selectedRepos.has(repo.name)}
+                              onChange={() => toggleRepo(repo.name)}
+                              className="mr-2"
+                            />
+                            <span
+                              className="px-2 py-1 rounded text-xs font-medium mr-2 text-white"
+                              style={{
+                                backgroundColor: repo.backgroundColor || '#30363d'
+                              }}
+                            >
+                              {repo.name}
+                            </span>
+                            <span className="text-xs text-github-gray-400 mr-2">({repoCount})</span>
+                            <span className="text-xs text-github-gray-500" title={`Última actualización: ${lastUpdate ? new Date(lastUpdate).toLocaleString() : 'Nunca'}`}>
+                              {timeSinceUpdate}
+                            </span>
+                          </label>
+                          <button
+                            onClick={(e) => {
+                              e.stopPropagation();
+                              refreshSingleRepo(repo);
+                            }}
+                            disabled={isRefreshing}
+                            className={`ml-2 p-1 rounded text-xs transition-all ${
+                              isRefreshing
+                                ? 'text-github-gray-500 cursor-not-allowed'
+                                : 'text-github-gray-400 hover:text-blue-400 hover:bg-github-gray-600 cursor-pointer'
+                            }`}
+                            title="Actualizar repositorio"
+                          >
+                            <span className={isRefreshing ? 'animate-spin inline-block' : ''}>
+                              🔄
+                            </span>
+                          </button>
+                        </div>
+                      );
+                    })}
                 </div>
               </div>
             )}
@@ -367,6 +666,17 @@ export const App: React.FC = () => {
         repositories={repositories}
         onRefreshStats={refreshStatsOnly}
       />
+
+      <SettingsModal
+        isOpen={showSettingsModal}
+        onClose={() => setShowSettingsModal(false)}
+        onSave={handleSettingsSaved}
+        currentConfig={currentConfig}
+      />
+
+      {showTokenSetup && (
+        <TokenSetupModal onTokenSaved={handleTokenSaved} />
+      )}
     </div>
   );
 };

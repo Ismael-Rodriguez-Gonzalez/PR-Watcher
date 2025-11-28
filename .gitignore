@@ -29,9 +29,13 @@ release
 .env
 .env.local
 .env.production
+.env.backup
 
 # Configuration files with sensitive data (tokens)
 config/config.json
+
+# Repository state (timestamps of last updates)
+config/repo-state.json
 
 # Temporary files and OS-specific
 .DS_Store

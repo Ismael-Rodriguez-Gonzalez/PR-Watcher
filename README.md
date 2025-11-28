@@ -1,3 +1,10 @@
+# TODO
+
+* [x] Configurar para que pida el token al arrancar
+* [x] Configurar para vigilar un conjunto de repos, por ejemplo los de componentescomunes, o componenteslegacy
+
+---
+
 # 🚀 GitHub PR Watcher
 
 Aplicación de escritorio Electron para visualizar, gestionar y analizar Pull Requests de múltiples repositorios de GitHub de forma centralizada.
@@ -122,6 +129,8 @@ Si trabajas con organizaciones que usan SAML SSO (como `masorange`):
 
 ### 3. Configurar Repositorios
 
+**Opción A: Manualmente**
+
 Edita `config/repos.json`:
 ```json
 {
@@ -134,6 +143,20 @@ Edita `config/repos.json`:
   ]
 }
 ```
+
+**Opción B: Con Script (Recomendado para múltiples repos)**
+
+Si tienes muchos repositorios con un patrón común (ej: "componenteslegacy-*"):
+
+```bash
+# Generar lista automáticamente
+npm run update-repos -- --pattern "componenteslegacy-*"
+
+# O añadir a la lista existente
+npm run update-repos -- --pattern "tu-patron-*" --add
+```
+
+Ver más opciones en [Scripts Disponibles](#-scripts-disponibles).
 
 ### 4. Configurar Usuarios del Equipo
 
@@ -308,7 +331,35 @@ npm run build:linux     # Build para Linux (.AppImage)
 ```bash
 npm run preview         # Preview del build
 npm run clean           # Limpiar archivos compilados
+npm run update-repos    # Actualizar repos.json con patrones
 ```
+
+### Gestión de Repositorios
+
+El script `update-repos` permite buscar y añadir repositorios automáticamente usando patrones:
+
+```bash
+# Buscar repos que empiecen por "componenteslegacy-"
+npm run update-repos -- --pattern "componenteslegacy-*"
+
+# Añadir a la lista existente (no reemplazar)
+npm run update-repos -- --pattern "componenteslegacy-*" --add
+
+# Especificar color personalizado
+npm run update-repos -- --pattern "componenteslegacy-*" --color "#ff6b35"
+
+# Ver todas las opciones
+npm run update-repos -- --help
+```
+
+**Opciones disponibles:**
+- `-p, --pattern <patrón>` - Patrón de búsqueda (ej: "componenteslegacy-*", "*-frontend")
+- `-o, --org <org>` - Organización de GitHub (default: masorange)
+- `-a, --add` - Añadir a repos.json existente sin reemplazar
+- `-c, --color <color>` - Color hexadecimal para todos los repos (default: aleatorio)
+- `-h, --help` - Mostrar ayuda completa
+
+**Nota:** Requiere que `GITHUB_TOKEN` o `GH_TOKEN` esté configurado en las variables de entorno.
 
 Los instaladores se generan en la carpeta `release/`.
 
