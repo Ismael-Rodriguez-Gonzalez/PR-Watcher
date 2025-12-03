@@ -256,6 +256,43 @@ class GitHubService {
       assignees: usernames
     });
   }
+
+  async getSinglePullRequest(repo: Repository, prNumber: number): Promise<PullRequest> {
+    if (!this.octokit) {
+      throw new Error('GitHub service not initialized. Please configure your token.');
+    }
+
+    // Extraer owner y repo de la URL
+    const urlParts = repo.url.replace('https://github.com/', '').split('/');
+    const owner = urlParts[0];
+    const repoName = urlParts[urlParts.length - 1];
+
+    try {
+      const [prDetailResponse, reviewsResponse] = await Promise.all([
+        this.octokit.pulls.get({
+          owner,
+          repo: repoName,
+          pull_number: prNumber
+        }),
+        this.octokit.pulls.listReviews({
+          owner,
+          repo: repoName,
+          pull_number: prNumber
+        })
+      ]);
+
+      return {
+        ...prDetailResponse.data,
+        repository: repo,
+        reviews: reviewsResponse.data,
+        mergeable: prDetailResponse.data.mergeable,
+        mergeable_state: prDetailResponse.data.mergeable_state
+      } as PullRequest;
+    } catch (error: any) {
+      console.error(`Error fetching PR #${prNumber}:`, error.message || error);
+      throw new Error(`Error al actualizar PR #${prNumber}: ${error.message}`);
+    }
+  }
 }
 
 export const githubService = new GitHubService();

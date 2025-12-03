@@ -114,9 +114,31 @@ ipcMain.handle('load-config', () => {
 
 ipcMain.handle('load-repositories', () => {
   try {
-    const basePath = process.env.NODE_ENV === 'development' ? process.cwd() : app.getAppPath();
-    const reposPath = path.join(basePath, 'config', 'repos.json');
+    let reposPath: string;
+
+    if (process.env.NODE_ENV === 'development') {
+      // En desarrollo: leer desde config/repos.json del proyecto
+      reposPath = path.join(process.cwd(), 'config', 'repos.json');
+    } else {
+      // En producción: priorizar userData, fallback a config del app
+      const userDataPath = app.getPath('userData');
+      const userReposPath = path.join(userDataPath, 'repos.json');
+
+      if (fs.existsSync(userReposPath)) {
+        reposPath = userReposPath;
+      } else {
+        // Fallback a repos.json empaquetado con la app (vacío por defecto en producción)
+        reposPath = path.join(app.getAppPath(), 'config', 'repos.json');
+      }
+    }
+
     console.log('[Electron] Loading repositories from:', reposPath);
+
+    if (!fs.existsSync(reposPath)) {
+      console.log('[Electron] No repositories file found, returning empty list');
+      return { repos: [], defaultRefreshInterval: 7200 };
+    }
+
     const data = fs.readFileSync(reposPath, 'utf-8');
     const parsed = JSON.parse(data);
     console.log('[Electron] Repositories loaded:', parsed.repos ? parsed.repos.length : 0);
@@ -257,6 +279,30 @@ ipcMain.handle('save-repo-state', async (_event, state: { lastUpdates: Record<st
     return { success: true };
   } catch (error) {
     console.error('[Electron] Error saving repo state:', error);
+    throw error;
+  }
+});
+
+ipcMain.handle('save-repositories', async (_event, reposConfig: { repos: any[]; defaultRefreshInterval: number }) => {
+  try {
+    let reposPath: string;
+
+    if (process.env.NODE_ENV === 'development') {
+      // En desarrollo: guardar en config/repos.json del proyecto
+      reposPath = path.join(process.cwd(), 'config', 'repos.json');
+    } else {
+      // En producción: guardar en userData
+      const userDataPath = app.getPath('userData');
+      reposPath = path.join(userDataPath, 'repos.json');
+    }
+
+    console.log('[Electron] Saving repositories to:', reposPath);
+    fs.writeFileSync(reposPath, JSON.stringify(reposConfig, null, 2), 'utf-8');
+    console.log('[Electron] Repositories saved:', reposConfig.repos.length, 'repos');
+
+    return { success: true };
+  } catch (error) {
+    console.error('[Electron] Error saving repositories:', error);
     throw error;
   }
 });

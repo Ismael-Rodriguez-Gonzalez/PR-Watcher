@@ -7,6 +7,8 @@ interface Props {
   users: User[];
   onAssignUser: (pr: PullRequest, username: string) => Promise<void>;
   onRemoveAssignee: (pr: PullRequest, username: string) => Promise<void>;
+  onRefreshPR: (pr: PullRequest) => Promise<void>;
+  prLastUpdate: Record<string, number>;
   loading: boolean;
   selectedRepos: Set<string>;
 }
@@ -16,6 +18,8 @@ export const PullRequestList: React.FC<Props> = ({
   users,
   onAssignUser,
   onRemoveAssignee,
+  onRefreshPR,
+  prLastUpdate,
   loading,
   selectedRepos
 }) => {
@@ -211,15 +215,21 @@ export const PullRequestList: React.FC<Props> = ({
             No se encontraron pull requests
           </div>
         ) : (
-          sortedPRs.map(pr => (
-            <PullRequestItem
-              key={`${pr.repository.name}-${pr.number}`}
-              pullRequest={pr}
-              users={users}
-              onAssignUser={onAssignUser}
-              onRemoveAssignee={onRemoveAssignee}
-            />
-          ))
+          sortedPRs.map(pr => {
+            const prKey = `${pr.repository.url}:${pr.number}`;
+            const lastUpdate = prLastUpdate[prKey];
+            return (
+              <PullRequestItem
+                key={`${pr.repository.name}-${pr.number}`}
+                pullRequest={pr}
+                users={users}
+                onAssignUser={onAssignUser}
+                onRemoveAssignee={onRemoveAssignee}
+                onRefreshPR={onRefreshPR}
+                lastUpdateTimestamp={lastUpdate}
+              />
+            );
+          })
         )}
       </div>
     </div>

@@ -48,6 +48,7 @@ export const App: React.FC = () => {
   const [currentConfig, setCurrentConfig] = useState({ githubToken: '', refreshInterval: 60 });
   const [defaultRefreshInterval, setDefaultRefreshInterval] = useState(7200); // 2 horas por defecto
   const [repoLastUpdate, setRepoLastUpdate] = useState<Record<string, number>>({}); // Timestamps de última actualización
+  const [prLastUpdate, setPrLastUpdate] = useState<Record<string, number>>({}); // Timestamps de última actualización por PR (key: repo.url:pr.number)
   const [repoSearchFilter, setRepoSearchFilter] = useState(''); // Filtro de búsqueda para repos
   const [refreshingRepos, setRefreshingRepos] = useState<Set<string>>(new Set()); // Repos que se están actualizando
   const repoMenuRef = React.useRef<HTMLDivElement>(null);
@@ -227,6 +228,18 @@ export const App: React.FC = () => {
       // Cargar PRs solo de los repos que necesitan actualización
       const newOpenPrs = await githubService.getAllPullRequests(reposToUpdate);
       console.log(`[Refresh] New PRs loaded: ${newOpenPrs.length}`);
+
+      // Actualizar timestamps de PRs individuales
+      const prTimestamps: Record<string, number> = {};
+      newOpenPrs.forEach(pr => {
+        const prKey = `${pr.repository.url}:${pr.number}`;
+        prTimestamps[prKey] = now;
+      });
+
+      setPrLastUpdate(prev => ({
+        ...prev,
+        ...prTimestamps
+      }));
 
       // Combinar con PRs existentes de repos que no se actualizaron
       setPullRequests(prevPRs => {
@@ -449,6 +462,47 @@ export const App: React.FC = () => {
     }
   };
 
+  const refreshSinglePR = async (pr: PullRequest): Promise<void> => {
+    try {
+      console.log(`[Manual Refresh] Updating PR #${pr.number} from ${pr.repository.name}...`);
+
+      // Cargar los datos actualizados de la PR
+      const updatedPR = await githubService.getSinglePullRequest(pr.repository, pr.number);
+
+      // Actualizar timestamp de esta PR
+      const prKey = `${pr.repository.url}:${pr.number}`;
+      const now = Date.now();
+      setPrLastUpdate(prev => ({
+        ...prev,
+        [prKey]: now
+      }));
+
+      // Si la PR está cerrada, removerla de la lista
+      if (updatedPR.state === 'closed') {
+        setPullRequests(prevPRs =>
+          prevPRs.filter(p =>
+            !(p.repository.url === pr.repository.url && p.number === pr.number)
+          )
+        );
+        console.log(`[Manual Refresh] PR #${pr.number} is now closed and has been removed from the list`);
+        alert(`La PR #${pr.number} está cerrada y ha sido eliminada de la lista.`);
+      } else {
+        // Actualizar solo esta PR en el estado
+        setPullRequests(prevPRs =>
+          prevPRs.map(p =>
+            p.repository.url === pr.repository.url && p.number === pr.number
+              ? updatedPR
+              : p
+          )
+        );
+        console.log(`[Manual Refresh] PR #${pr.number} updated successfully`);
+      }
+    } catch (err) {
+      console.error(`[Manual Refresh] Error updating PR #${pr.number}:`, err);
+      throw err; // Re-lanzar el error para que el componente pueda manejarlo
+    }
+  };
+
   const handleTokenSaved = async (token: string) => {
     setShowTokenSetup(false);
     setLoading(true);
@@ -653,6 +707,8 @@ export const App: React.FC = () => {
           users={users}
           onAssignUser={handleAssignUser}
           onRemoveAssignee={handleRemoveAssignee}
+          onRefreshPR={refreshSinglePR}
+          prLastUpdate={prLastUpdate}
           loading={loading}
           selectedRepos={selectedRepos}
         />

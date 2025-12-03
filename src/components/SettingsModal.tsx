@@ -13,6 +13,12 @@ export const SettingsModal: React.FC<SettingsModalProps> = ({ isOpen, onClose, o
   const [showToken, setShowToken] = useState(false);
   const [saving, setSaving] = useState(false);
   const [error, setError] = useState<string | null>(null);
+  const [reposJSON, setReposJSON] = useState('');
+  const [reposError, setReposError] = useState<string | null>(null);
+  const [reposSaved, setReposSaved] = useState(false);
+  const [isDragging, setIsDragging] = useState(false);
+  const [fileName, setFileName] = useState<string | null>(null);
+  const fileInputRef = React.useRef<HTMLInputElement>(null);
 
   useEffect(() => {
     if (isOpen) {
@@ -20,6 +26,9 @@ export const SettingsModal: React.FC<SettingsModalProps> = ({ isOpen, onClose, o
       setRefreshInterval(currentConfig.refreshInterval);
       setShowToken(false);
       setError(null);
+      setReposJSON('');
+      setReposError(null);
+      setReposSaved(false);
     }
   }, [isOpen, currentConfig]);
 
@@ -57,10 +66,114 @@ export const SettingsModal: React.FC<SettingsModalProps> = ({ isOpen, onClose, o
     }
   };
 
+  const validateAndSetJSON = (jsonString: string, filename?: string) => {
+    try {
+      const parsed = JSON.parse(jsonString);
+
+      // Validar estructura
+      if (!parsed.repos || !Array.isArray(parsed.repos)) {
+        setReposError('El JSON debe contener un array "repos"');
+        return false;
+      }
+
+      if (typeof parsed.defaultRefreshInterval !== 'number') {
+        setReposError('El JSON debe contener "defaultRefreshInterval" (número)');
+        return false;
+      }
+
+      setReposJSON(jsonString);
+      setReposError(null);
+      if (filename) setFileName(filename);
+      return true;
+    } catch (err: any) {
+      if (err instanceof SyntaxError) {
+        setReposError('JSON inválido: ' + err.message);
+      } else {
+        setReposError('Error al procesar: ' + err.message);
+      }
+      return false;
+    }
+  };
+
+  const handleFileSelect = (event: React.ChangeEvent<HTMLInputElement>) => {
+    const file = event.target.files?.[0];
+    if (!file) return;
+
+    if (!file.name.endsWith('.json')) {
+      setReposError('Por favor selecciona un archivo .json');
+      return;
+    }
+
+    const reader = new FileReader();
+    reader.onload = (e) => {
+      const content = e.target?.result as string;
+      validateAndSetJSON(content, file.name);
+    };
+    reader.onerror = () => {
+      setReposError('Error al leer el archivo');
+    };
+    reader.readAsText(file);
+  };
+
+  const handleDragOver = (e: React.DragEvent) => {
+    e.preventDefault();
+    setIsDragging(true);
+  };
+
+  const handleDragLeave = (e: React.DragEvent) => {
+    e.preventDefault();
+    setIsDragging(false);
+  };
+
+  const handleDrop = (e: React.DragEvent) => {
+    e.preventDefault();
+    setIsDragging(false);
+
+    const file = e.dataTransfer.files[0];
+    if (!file) return;
+
+    if (!file.name.endsWith('.json')) {
+      setReposError('Por favor arrastra un archivo .json');
+      return;
+    }
+
+    const reader = new FileReader();
+    reader.onload = (event) => {
+      const content = event.target?.result as string;
+      validateAndSetJSON(content, file.name);
+    };
+    reader.onerror = () => {
+      setReposError('Error al leer el archivo');
+    };
+    reader.readAsText(file);
+  };
+
+  const handleSaveRepositories = async () => {
+    if (!reposJSON.trim()) {
+      setReposError('Debes cargar un archivo JSON primero');
+      return;
+    }
+
+    try {
+      const parsed = JSON.parse(reposJSON);
+
+      // Guardar repositorios
+      await window.electronAPI.saveRepositories(parsed);
+      setReposSaved(true);
+      setReposError(null);
+      setTimeout(() => setReposSaved(false), 3000);
+    } catch (err: any) {
+      setReposError('Error al guardar: ' + err.message);
+    }
+  };
+
   const handleCancel = () => {
     setToken(currentConfig.githubToken);
     setRefreshInterval(currentConfig.refreshInterval);
     setError(null);
+    setReposJSON('');
+    setReposError(null);
+    setFileName(null);
     onClose();
   };
 
@@ -129,13 +242,124 @@ export const SettingsModal: React.FC<SettingsModalProps> = ({ isOpen, onClose, o
             </p>
           </div>
 
+          {/* Gestión de Repositorios */}
+          <div className="border-t border-github-gray-600 pt-6">
+            <h3 className="text-lg font-semibold text-blue-400 mb-4">📁 Repositorios</h3>
+
+            <div>
+              <label className="block text-github-gray-100 mb-2 font-medium">
+                Cargar Configuración de Repositorios
+              </label>
+
+              {/* Zona de Drag & Drop */}
+              <div
+                onDragOver={handleDragOver}
+                onDragLeave={handleDragLeave}
+                onDrop={handleDrop}
+                className={`relative border-2 border-dashed rounded-github p-8 text-center transition-all duration-200 ${
+                  isDragging
+                    ? 'border-blue-500 bg-blue-500/10'
+                    : fileName
+                    ? 'border-green-500 bg-green-500/10'
+                    : 'border-github-gray-600 bg-github-gray-900 hover:border-blue-400'
+                }`}
+              >
+                <input
+                  ref={fileInputRef}
+                  type="file"
+                  accept=".json"
+                  onChange={handleFileSelect}
+                  className="hidden"
+                />
+
+                {fileName ? (
+                  <div className="space-y-3">
+                    <div className="text-4xl">✅</div>
+                    <p className="text-green-400 font-medium">{fileName}</p>
+                    <p className="text-xs text-github-gray-400">
+                      Archivo cargado correctamente
+                    </p>
+                    <button
+                      onClick={() => {
+                        setFileName(null);
+                        setReposJSON('');
+                        setReposError(null);
+                        if (fileInputRef.current) fileInputRef.current.value = '';
+                      }}
+                      className="text-xs text-blue-400 hover:text-blue-300 underline"
+                    >
+                      Cargar otro archivo
+                    </button>
+                  </div>
+                ) : (
+                  <div className="space-y-3">
+                    <div className="text-5xl">📄</div>
+                    <p className="text-github-gray-100 font-medium">
+                      Arrastra aquí tu archivo repos.json
+                    </p>
+                    <p className="text-sm text-github-gray-400">o</p>
+                    <button
+                      onClick={() => fileInputRef.current?.click()}
+                      className="px-4 py-2 bg-blue-600 border border-blue-500 text-white rounded-github cursor-pointer text-sm font-medium transition-all duration-200 hover:bg-blue-500"
+                    >
+                      Seleccionar Archivo
+                    </button>
+                    <p className="text-xs text-github-gray-500 mt-2">
+                      Formato: archivo .json con estructura de repositorios
+                    </p>
+                  </div>
+                )}
+              </div>
+
+              {/* Ejemplo de estructura */}
+              <details className="mt-3">
+                <summary className="text-xs text-blue-400 cursor-pointer hover:text-blue-300">
+                  Ver ejemplo de estructura JSON
+                </summary>
+                <pre className="mt-2 p-3 bg-github-gray-900 border border-github-gray-600 rounded text-xs text-github-gray-300 overflow-x-auto">
+{`{
+  "defaultRefreshInterval": 7200,
+  "repos": [
+    {
+      "url": "https://github.com/owner/repo",
+      "name": "Mi Repo",
+      "backgroundColor": "#ff6b6b",
+      "refreshInterval": 3600
+    }
+  ]
+}`}
+                </pre>
+              </details>
+
+              {reposError && (
+                <div className="mt-3 bg-red-900/30 border border-red-600 rounded-github p-3">
+                  <p className="text-red-300 text-sm">{reposError}</p>
+                </div>
+              )}
+
+              {reposSaved && (
+                <div className="mt-3 bg-green-900/30 border border-green-600 rounded-github p-3">
+                  <p className="text-green-300 text-sm">✅ Repositorios guardados. Reinicia la app para aplicar los cambios.</p>
+                </div>
+              )}
+
+              <button
+                onClick={handleSaveRepositories}
+                disabled={!reposJSON.trim() || saving}
+                className="mt-4 w-full px-4 py-2 bg-github-green border border-green-600 text-white rounded-github cursor-pointer text-sm font-medium transition-all duration-200 hover:bg-green-600 disabled:opacity-50 disabled:cursor-not-allowed"
+              >
+                {saving ? 'Guardando...' : 'Guardar Repositorios'}
+              </button>
+            </div>
+          </div>
+
           {/* Información de almacenamiento */}
           <div className="bg-github-gray-900 border border-github-gray-600 rounded-github p-4">
             <h3 className="text-sm font-semibold text-github-gray-100 mb-2">📁 Almacenamiento</h3>
             <p className="text-xs text-github-gray-400">
               {process.env.NODE_ENV === 'development'
-                ? '🔧 Desarrollo: La configuración se guarda en .env.local'
-                : '📦 Producción: La configuración se guarda en el directorio de datos de usuario de la aplicación'}
+                ? '🔧 Desarrollo: La configuración se guarda en .env.local y config/repos.json'
+                : '📦 Producción: La configuración se guarda en el directorio de datos de usuario'}
             </p>
             <p className="mt-2 text-xs text-green-400">
               🔒 Tu token nunca se sube a git ni se comparte

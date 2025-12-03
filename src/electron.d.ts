@@ -4,6 +4,7 @@ export interface IElectronAPI {
   loadUsers: () => Promise<any[]>;
   openExternal: (url: string) => Promise<void>;
   saveConfig: (config: { githubToken: string; refreshInterval: number }) => Promise<{ success: boolean }>;
+  saveRepositories: (reposConfig: { repos: any[]; defaultRefreshInterval: number }) => Promise<{ success: boolean }>;
   loadRepoState: () => Promise<{ lastUpdates: Record<string, number>; cachedPRs?: Record<string, any[]> }>;
   saveRepoState: (state: { lastUpdates: Record<string, number>; cachedPRs?: Record<string, any[]> }) => Promise<{ success: boolean }>;
 }

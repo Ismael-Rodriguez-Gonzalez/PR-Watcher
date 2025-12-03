@@ -8,19 +8,24 @@ interface Props {
   users: User[];
   onAssignUser: (pr: PullRequest, username: string) => Promise<void>;
   onRemoveAssignee: (pr: PullRequest, username: string) => Promise<void>;
+  onRefreshPR: (pr: PullRequest) => Promise<void>;
+  lastUpdateTimestamp?: number;
 }
 
 export const PullRequestItem: React.FC<Props> = ({
   pullRequest: pr,
   users,
   onAssignUser,
-  onRemoveAssignee
+  onRemoveAssignee,
+  onRefreshPR,
+  lastUpdateTimestamp
 }) => {
   const [showAssignMenu, setShowAssignMenu] = useState(false);
   const [assigning, setAssigning] = useState(false);
   const [userFilter, setUserFilter] = useState('');
   const [menuAlignment, setMenuAlignment] = useState<'left' | 'right'>('left');
   const [copyFeedback, setCopyFeedback] = useState(false);
+  const [refreshing, setRefreshing] = useState(false);
   const assignContainerRef = useRef<HTMLDivElement>(null);
 
   const getMergeStatus = (pr: PullRequest): { status: string; icon: string; text: string } => {
@@ -142,6 +147,18 @@ export const PullRequestItem: React.FC<Props> = ({
     window.electronAPI.openExternal(pr.html_url);
   };
 
+  const handleRefreshPR = async () => {
+    setRefreshing(true);
+    try {
+      await onRefreshPR(pr);
+    } catch (error) {
+      console.error('Error refreshing PR:', error);
+      alert(`Error al actualizar PR: ${error}`);
+    } finally {
+      setRefreshing(false);
+    }
+  };
+
   // Función para normalizar texto (eliminar tildes y signos de puntuación)
   // Ejemplos: "José María" -> "jose maria", "Ángel-García" -> "angel garcia"
   const normalizeText = (text: string): string => {
@@ -196,226 +213,221 @@ export const PullRequestItem: React.FC<Props> = ({
 
   return (
     <div className={`bg-github-gray-900 border border-github-gray-600 rounded-github p-3 transition-all duration-200 hover:border-blue-400 hover:shadow-lg hover:shadow-blue-400/10 ${pr.draft ? 'border-l-4 border-l-github-gray-500' : ''}`}>
-      <div className="mb-2.5">
-        <div className="flex flex-col gap-1.5">
-          <h3 className="text-blue-400 text-sm font-semibold cursor-pointer m-0 leading-tight hover:underline" onClick={openInGitHub}>
-            {pr.title}
-            <button
-              className={`ml-2 bg-transparent border-none cursor-pointer text-sm p-1 rounded transition-all duration-200 opacity-70 inline-flex items-center justify-center min-w-[18px] h-[18px] ${copyFeedback ? 'text-green-400 bg-green-400/10 opacity-100' : 'text-github-gray-400 hover:text-blue-400 hover:bg-blue-400/10 hover:opacity-100'}`}
-              onClick={(e) => {
-                e.stopPropagation();
-                handleCopyURL();
-              }}
-              title="Copiar URL de la PR"
-            >
-              {copyFeedback ? '✓' : '📋'}
-            </button>
-            {(() => {
-              const mergeStatus = getMergeStatus(pr);
-              return (
-                <span className={getMergeStatusClasses(mergeStatus.status)} title={`Merge status: ${mergeStatus.text}`}>
-                  <span className="mr-1 text-xs">{mergeStatus.icon}</span>
-                  {mergeStatus.text}
-                </span>
-              );
-            })()}
-          </h3>
-          <div className="flex gap-2 items-center flex-wrap mt-0.5">
-            <span className="text-github-gray-400 text-sm">#{pr.number}</span>
-            <span
-              className="text-white text-xs font-semibold px-2 py-0.5 rounded shadow-sm border border-white/10"
-              style={{
-                backgroundColor: pr.repository.backgroundColor || '#30363d'
-              }}
-            >
-              {pr.repository.name}
-            </span>
-            <div className="font-mono inline-flex items-center gap-2 px-2 py-1 rounded text-xs font-bold shadow-sm">
-              <span className={getBranchClasses(pr.head.ref, false)}>
-                {pr.head.ref}
+      {/* Fila 1: Título + Merge Status + Botón copiar */}
+      <div className="flex items-start gap-2 mb-2">
+        <h3 className="text-blue-400 text-sm font-semibold cursor-pointer m-0 leading-tight hover:underline flex-1" onClick={openInGitHub}>
+          {pr.title}
+        </h3>
+        <div className="flex gap-1 items-center shrink-0">
+          {(() => {
+            const mergeStatus = getMergeStatus(pr);
+            return (
+              <span className={getMergeStatusClasses(mergeStatus.status)} title={`Merge status: ${mergeStatus.text}`}>
+                <span className="mr-1 text-xs">{mergeStatus.icon}</span>
+                {mergeStatus.text}
               </span>
-              <span className="font-bold text-base text-blue-400 mx-1.5 select-none">→</span>
-              <span className={getBranchClasses(pr.base.ref, true)}>
-                {pr.base.ref}
-              </span>
-            </div>
-            {pr.draft && <span className="bg-github-gray-500 text-white px-2 py-0.5 rounded text-xs font-semibold">DRAFT</span>}
-          </div>
+            );
+          })()}
+          <button
+            className={`bg-transparent border-none cursor-pointer text-sm p-1 rounded transition-all duration-200 opacity-70 inline-flex items-center justify-center min-w-[18px] h-[18px] ${copyFeedback ? 'text-green-400 bg-green-400/10 opacity-100' : 'text-github-gray-400 hover:text-blue-400 hover:bg-blue-400/10 hover:opacity-100'}`}
+            onClick={(e) => {
+              e.stopPropagation();
+              handleCopyURL();
+            }}
+            title="Copiar URL de la PR"
+          >
+            {copyFeedback ? '✓' : '📋'}
+          </button>
         </div>
       </div>
 
-      <div className="flex flex-col gap-2">
-        <div className="flex gap-4 flex-wrap items-center">
-          <div className="flex gap-1.5 items-center text-sm">
-            <div className="flex gap-2 items-center">
-              <img src={pr.user.avatar_url} alt={pr.user.login} className="w-5 h-5 rounded-full" />
-              <span>{pr.user.login}</span>
-            </div>
-          </div>
+      {/* Fila 2: Metadata (Repo, #, Branches, Draft) */}
+      <div className="flex gap-2 items-center flex-wrap mb-2 text-xs">
+        <span
+          className="text-white font-semibold px-2 py-0.5 rounded border border-white/10"
+          style={{
+            backgroundColor: pr.repository.backgroundColor || '#30363d'
+          }}
+        >
+          {pr.repository.name}
+        </span>
+        <span className="text-github-gray-400">#{pr.number}</span>
+        <div className="font-mono inline-flex items-center gap-1.5">
+          <span className={getBranchClasses(pr.head.ref, false)}>
+            {pr.head.ref}
+          </span>
+          <span className="text-blue-400 mx-0.5">→</span>
+          <span className={getBranchClasses(pr.base.ref, true)}>
+            {pr.base.ref}
+          </span>
+        </div>
+        {pr.draft && <span className="bg-github-gray-500 text-white px-2 py-0.5 rounded font-semibold">DRAFT</span>}
+      </div>
 
-          <div className="flex gap-1.5 items-center text-sm">
-            <span>
-              {formatDistanceToNow(new Date(pr.created_at), {
-                addSuffix: true,
-                locale: es
-              })}
-            </span>
-          </div>
-
-          <div className="flex gap-1.5 items-center text-sm">
-            <span className="bg-github-gray-700 px-1.5 py-0.5 rounded text-xs">
-              💬 {(pr.comments || 0) + (pr.review_comments || 0)} {pr.review_comments > 0 && `(${pr.review_comments} en código)`}
-            </span>
-          </div>
+      {/* Fila 3: Autor + Tiempos + Comentarios + Botón Actualizar */}
+      <div className="flex gap-3 flex-wrap items-center mb-2 text-xs">
+        <div className="flex gap-1.5 items-center">
+          <img src={pr.user.avatar_url} alt={pr.user.login} className="w-4 h-4 rounded-full" />
+          <span className="text-github-gray-300">{pr.user.login}</span>
         </div>
 
-        {/* Reviews y Approvals */}
-        {pr.reviews && pr.reviews.length > 0 && (
-          <div className="flex gap-4 flex-wrap items-center">
-            <div className="flex gap-1.5 items-center text-sm min-h-auto">
-              <strong className="text-github-gray-400">Reviews:</strong>
-              <div className="flex flex-wrap gap-1.5 mt-0.5">
-                {(() => {
-                  // Filtrar solo los reviews más recientes por usuario
-                  const latestReviews = new Map();
-                  pr.reviews
-                    .sort((a, b) => new Date(b.submitted_at).getTime() - new Date(a.submitted_at).getTime())
-                    .forEach(review => {
-                      if (!latestReviews.has(review.user.login)) {
-                        latestReviews.set(review.user.login, review);
-                      }
-                    });
+        <div className="flex gap-3 items-center text-github-gray-400">
+          <span title={`Creada: ${new Date(pr.created_at).toLocaleString()}`}>
+            🕐 {formatDistanceToNow(new Date(pr.created_at), { addSuffix: true, locale: es })}
+          </span>
+          <span title={`Última modificación en GitHub: ${new Date(pr.updated_at).toLocaleString()}`}>
+            📝 {formatDistanceToNow(new Date(pr.updated_at), { addSuffix: true, locale: es })}
+          </span>
+          {lastUpdateTimestamp && (
+            <span className="text-green-400" title={`Datos actualizados: ${new Date(lastUpdateTimestamp).toLocaleString()}`}>
+              ✅ {formatDistanceToNow(new Date(lastUpdateTimestamp), { addSuffix: true, locale: es })}
+            </span>
+          )}
+        </div>
 
-                  const getReviewClasses = (state: string): string => {
-                    const baseClasses = 'flex items-center gap-1 px-1.5 py-1 rounded text-xs border border-transparent';
-                    switch (state.toLowerCase()) {
-                      case 'approved':
-                        return `${baseClasses} bg-green-600/15 border-green-600/30`;
-                      case 'changes_requested':
-                        return `${baseClasses} bg-red-600/15 border-red-600/30`;
-                      case 'commented':
-                        return `${baseClasses} bg-blue-600/15 border-blue-600/30`;
-                      case 'dismissed':
-                        return `${baseClasses} bg-github-gray-500/15 border-github-gray-500/30`;
-                      default:
-                        return baseClasses;
-                    }
-                  };
+        <span className="text-github-gray-400">
+          💬 {(pr.comments || 0) + (pr.review_comments || 0)}{pr.review_comments > 0 && ` (${pr.review_comments})`}
+        </span>
 
-                  const getReviewStatusClasses = (state: string): string => {
-                    const baseClasses = 'text-base flex items-center';
-                    switch (state.toLowerCase()) {
-                      case 'approved':
-                        return `${baseClasses} text-green-600`;
-                      case 'changes_requested':
-                        return `${baseClasses} text-red-600`;
-                      case 'commented':
-                        return `${baseClasses} text-blue-600`;
-                      case 'dismissed':
-                        return `${baseClasses} text-github-gray-500`;
-                      default:
-                        return baseClasses;
-                    }
-                  };
+        <button
+          className={`ml-auto px-2 py-0.5 rounded text-xs transition-all duration-200 ${
+            refreshing
+              ? 'bg-github-gray-600 text-github-gray-500 cursor-not-allowed'
+              : 'bg-github-gray-700 text-github-gray-300 hover:bg-blue-600 hover:text-white cursor-pointer'
+          }`}
+          onClick={handleRefreshPR}
+          disabled={refreshing}
+          title="Actualizar esta PR"
+        >
+          <span className={refreshing ? 'animate-spin inline-block' : ''}>🔄</span>
+        </button>
+      </div>
 
-                  return Array.from(latestReviews.values()).map(review => (
-                    <div key={`${review.user.login}-${review.id}`} className={getReviewClasses(review.state)}>
-                      <img src={review.user.avatar_url} alt={review.user.login} className="w-4 h-4 rounded-full" />
-                      <span className="text-github-gray-100 font-medium">{review.user.login}</span>
-                      <span className={getReviewStatusClasses(review.state)}>
-                        {review.state === 'APPROVED' && '✅'}
-                        {review.state === 'CHANGES_REQUESTED' && '❌'}
-                        {review.state === 'COMMENTED' && '💬'}
-                        {review.state === 'DISMISSED' && '🚫'}
-                      </span>
-                    </div>
-                  ));
-                })()}
+      {/* Fila 4: Reviews (si existen) */}
+      {pr.reviews && pr.reviews.length > 0 && (
+        <div className="flex gap-1.5 items-center mb-2 text-xs">
+          <strong className="text-github-gray-400">Reviews:</strong>
+          <div className="flex flex-wrap gap-1.5">
+            {(() => {
+              // Filtrar solo los reviews más recientes por usuario
+              const latestReviews = new Map();
+              pr.reviews
+                .sort((a, b) => new Date(b.submitted_at).getTime() - new Date(a.submitted_at).getTime())
+                .forEach(review => {
+                  if (!latestReviews.has(review.user.login)) {
+                    latestReviews.set(review.user.login, review);
+                  }
+                });
+
+              const getReviewClasses = (state: string): string => {
+                const baseClasses = 'flex items-center gap-1 px-1.5 py-0.5 rounded text-xs border border-transparent';
+                switch (state.toLowerCase()) {
+                  case 'approved':
+                    return `${baseClasses} bg-green-600/15 border-green-600/30`;
+                  case 'changes_requested':
+                    return `${baseClasses} bg-red-600/15 border-red-600/30`;
+                  case 'commented':
+                    return `${baseClasses} bg-blue-600/15 border-blue-600/30`;
+                  case 'dismissed':
+                    return `${baseClasses} bg-github-gray-500/15 border-github-gray-500/30`;
+                  default:
+                    return baseClasses;
+                }
+              };
+
+              return Array.from(latestReviews.values()).map(review => (
+                <div key={`${review.user.login}-${review.id}`} className={getReviewClasses(review.state)}>
+                  <img src={review.user.avatar_url} alt={review.user.login} className="w-3.5 h-3.5 rounded-full" />
+                  <span className="text-github-gray-100">{review.user.login}</span>
+                  <span>
+                    {review.state === 'APPROVED' && '✅'}
+                    {review.state === 'CHANGES_REQUESTED' && '❌'}
+                    {review.state === 'COMMENTED' && '💬'}
+                    {review.state === 'DISMISSED' && '🚫'}
+                  </span>
+                </div>
+              ));
+            })()}
+          </div>
+        </div>
+      )}
+
+      {/* Fila 5: Assignees */}
+      <div className="flex gap-2 items-center text-xs">
+        <div className="flex gap-1.5 flex-wrap flex-1">
+          {pr.assignees.length === 0 ? (
+            <span className="text-github-gray-500 italic">Sin asignar</span>
+          ) : (
+            pr.assignees.map(assignee => (
+              <div key={assignee.login} className="flex gap-1 items-center bg-github-gray-700 px-1.5 py-0.5 rounded">
+                <img src={assignee.avatar_url} alt={assignee.login} className="w-3.5 h-3.5 rounded-full" />
+                <span className="text-github-gray-200">{assignee.login}</span>
+                <button
+                  className="bg-transparent border-none text-red-400 cursor-pointer px-0.5 text-xs font-bold hover:text-red-300 disabled:opacity-50 disabled:cursor-not-allowed"
+                  onClick={() => handleRemove(assignee.login)}
+                  disabled={assigning}
+                  title="Eliminar asignación"
+                >
+                  ✕
+                </button>
+              </div>
+            ))
+          )}
+        </div>
+
+        <div className="relative" ref={assignContainerRef}>
+          <button
+            className="px-2 py-0.5 bg-github-green text-white border-none rounded cursor-pointer text-xs font-medium transition-colors duration-200 hover:bg-green-600 disabled:opacity-50 disabled:cursor-not-allowed"
+            onClick={() => {
+              if (!showAssignMenu) {
+                calculateMenuPosition();
+                setUserFilter('');
+              }
+              setShowAssignMenu(!showAssignMenu);
+            }}
+            disabled={assigning}
+          >
+            {assigning ? 'Asignando...' : '+ Asignar'}
+          </button>
+
+          {showAssignMenu && (
+            <div className={`absolute top-full mt-1 bg-github-gray-800 border border-github-gray-600 rounded-github p-0 min-w-[280px] max-w-[350px] w-max z-50 shadow-github-lg overflow-hidden ${menuAlignment === 'right' ? 'right-0' : 'left-0'}`}>
+              <div className="p-3 border-b border-github-gray-600 bg-github-gray-800">
+                <input
+                  type="text"
+                  placeholder="Buscar usuario..."
+                  value={userFilter}
+                  onChange={(e) => setUserFilter(e.target.value)}
+                  className="w-full px-2 py-1 bg-github-gray-900 border border-github-gray-600 rounded text-xs text-white placeholder-github-gray-500 focus:outline-none focus:border-blue-500"
+                  autoFocus
+                />
+                {userFilter && (
+                  <div className="mt-2 text-xs text-github-gray-400 text-center">
+                    {filteredUsers.length} de {users.length} usuarios
+                  </div>
+                )}
+              </div>
+              <div className="max-h-[300px] overflow-y-auto p-2 scrollbar-thin">
+                {filteredUsers.length === 0 ? (
+                  <div className="px-3 py-4 text-center text-github-gray-400 text-xs italic">
+                    No se encontraron usuarios
+                  </div>
+                ) : (
+                  filteredUsers.map(user => (
+                    <button
+                      key={user.username}
+                      className="block w-full px-2 py-1 bg-transparent border-none text-github-gray-100 text-left cursor-pointer rounded text-xs hover:bg-github-gray-600 disabled:opacity-50 disabled:cursor-default disabled:bg-github-gray-700"
+                      onClick={() => handleAssign(user.username)}
+                      disabled={pr.assignees.some(a => a.login === user.username)}
+                    >
+                      {user.name} (@{user.username})
+                      {pr.assignees.some(a => a.login === user.username) && ' ✓'}
+                    </button>
+                  ))
+                )}
               </div>
             </div>
-          </div>
-        )}
-
-        <div className="flex gap-4 flex-wrap items-center">
-          <div className="flex gap-1.5 items-center flex-row flex-1">
-            <div className="flex gap-1.5 flex-wrap">
-              {pr.assignees.length === 0 ? (
-                <span className="text-github-gray-500 italic">Sin asignar</span>
-              ) : (
-                pr.assignees.map(assignee => (
-                  <div key={assignee.login} className="flex gap-1 items-center bg-github-gray-700 px-1.5 py-1 rounded text-xs">
-                    <img src={assignee.avatar_url} alt={assignee.login} className="w-4 h-4 rounded-full" />
-                    <span>{assignee.login}</span>
-                    <button
-                      className="bg-transparent border-none text-red-400 cursor-pointer px-1 text-sm font-bold hover:text-red-300 disabled:opacity-50 disabled:cursor-not-allowed"
-                      onClick={() => handleRemove(assignee.login)}
-                      disabled={assigning}
-                      title="Eliminar asignación"
-                    >
-                      ✕
-                    </button>
-                  </div>
-                ))
-              )}
-            </div>
-          </div>
-
-          <div className="flex gap-1.5 items-center">
-            <div className="relative" ref={assignContainerRef}>
-              <button
-                className="px-2.5 py-1 bg-github-green text-white border-none rounded cursor-pointer text-xs font-medium transition-colors duration-200 hover:bg-green-600 disabled:opacity-50 disabled:cursor-not-allowed"
-                onClick={() => {
-                  if (!showAssignMenu) {
-                    calculateMenuPosition(); // Calcular posición antes de abrir
-                    setUserFilter(''); // Limpiar filtro al abrir el menú
-                  }
-                  setShowAssignMenu(!showAssignMenu);
-                }}
-                disabled={assigning}
-              >
-                {assigning ? 'Asignando...' : '+ Asignar'}
-              </button>
-
-              {showAssignMenu && (
-                <div className={`absolute top-full mt-1 bg-github-gray-800 border border-github-gray-600 rounded-github p-0 min-w-[280px] max-w-[350px] w-max z-50 shadow-github-lg overflow-hidden ${menuAlignment === 'right' ? 'right-0' : 'left-0'}`}>
-                  <div className="p-3 border-b border-github-gray-600 bg-github-gray-800">
-                    <input
-                      type="text"
-                      placeholder="Buscar usuario (sin tildes)..."
-                      value={userFilter}
-                      onChange={(e) => setUserFilter(e.target.value)}
-                      className="w-full px-3 py-2 bg-github-gray-900 border border-github-gray-600 rounded-github text-github-gray-100 text-sm outline-none focus:border-blue-400 focus:shadow-sm focus:shadow-blue-400/10 placeholder-github-gray-400"
-                      autoFocus
-                    />
-                    {userFilter && (
-                      <div className="mt-2 text-xs text-github-gray-400 text-center">
-                        {filteredUsers.length} de {users.length} usuarios
-                      </div>
-                    )}
-                  </div>
-                  <div className="max-h-[300px] overflow-y-auto p-2 scrollbar-thin">
-                    {filteredUsers.length === 0 ? (
-                      <div className="px-3 py-4 text-center text-github-gray-400 text-sm italic">
-                        No se encontraron usuarios
-                      </div>
-                    ) : (
-                      filteredUsers.map(user => (
-                        <button
-                          key={user.username}
-                          className="block w-full px-3 py-2 bg-transparent border-none text-github-gray-100 text-left cursor-pointer rounded text-sm hover:bg-github-gray-600 disabled:opacity-50 disabled:cursor-default disabled:bg-github-gray-700"
-                          onClick={() => handleAssign(user.username)}
-                          disabled={pr.assignees.some(a => a.login === user.username)}
-                        >
-                          {user.name} (@{user.username})
-                          {pr.assignees.some(a => a.login === user.username) && ' ✓'}
-                        </button>
-                      ))
-                    )}
-                  </div>
-                </div>
-              )}
-            </div>
-          </div>
+          )}
         </div>
       </div>
     </div>
